@@ -1,0 +1,46 @@
+import type { CardDesign } from './types'
+
+const placeholder = '/assets/catalog-placeholder.svg'
+
+export const config = {
+  eventTitle: import.meta.env.VITE_EVENT_TITLE || 'Americas SE&O & EPS GIVE Campaign 2026',
+  eventDate: import.meta.env.VITE_EVENT_DATE || 'October 16, 2026',
+  eventDuration: import.meta.env.VITE_EVENT_DURATION || 'approximately 25 minutes',
+  activityName: import.meta.env.VITE_ACTIVITY_NAME || 'Words of Encouragement',
+  trackingUrl:
+    import.meta.env.VITE_VOLUNTEER_TRACKING_URL ||
+    'https://microsoft.benevity.org/volunteer/external/track/?cause_id=840-362934689',
+  maxMessageLength: Number(import.meta.env.VITE_MAX_MESSAGE_LENGTH || 350),
+  consentVersion: import.meta.env.VITE_CONSENT_VERSION || '2026-01',
+  aiReviewEnabled: import.meta.env.VITE_AI_REVIEW_ENABLED === 'true',
+  aiImageEnabled: import.meta.env.VITE_AI_IMAGE_ENABLED === 'true',
+  footerText:
+    import.meta.env.VITE_APPROVED_FOOTER_TEXT ||
+    'Created for the Americas SE&O & EPS GIVE Campaign 2026 volunteer activity. Approved legal wording is pending event-owner review.',
+}
+
+export const languages = [
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'pt', label: 'Português' },
+  { code: 'ar', label: 'العربية' },
+  { code: 'he', label: 'עברית' },
+] as const
+
+export const designs: CardDesign[] = [
+  ['colorful-squares', 'Thinking of You: Colorful Squares', 'Warm geometric shapes surrounding an open message area.'],
+  ['butterflies-flowers', 'Butterflies and Flowers', 'Gentle butterflies and flowers around a clear message area.'],
+  ['joyful-wishes', 'Joyful Wishes', 'Cheerful shapes framing a spacious message area.'],
+  ['sending-sunshine', 'Sending Sunshine', 'A bright, hopeful sunshine-inspired card.'],
+  ['spring-flowers', 'Thinking of You: Spring Flowers', 'Soft spring flowers around a calm message area.'],
+  ['heart-encouragement', 'Heart of Encouragement', 'Warm heart shapes framing the message.'],
+].map(([id, title, description]) => ({
+  id,
+  title,
+  description,
+  image: placeholder,
+  source: 'approved-catalog' as const,
+  textColor: '#3a2a23',
+  panelColor: 'rgba(255, 250, 239, 0.9)',
+}))

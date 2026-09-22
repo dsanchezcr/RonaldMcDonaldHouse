@@ -1,0 +1,28 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "Serverless APIs for Words of Encouragement",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "func start",
+    "test": "vitest run",
+    "check": "npm test && npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@azure/functions": "^4.16.5",
+    "@azure/identity": "^4.13.3",
+    "@azure/storage-blob": "^12.33.0",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "^6.0.2",
+    "vitest": "^5.0.1"
+  }
+}

@@ -427,3 +427,10 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# JavaScript and Azure Functions build outputs
+dist/
+coverage/
+playwright-report/
+test-results/
+api/local.settings.json

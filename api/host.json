@@ -1,0 +1,24 @@
+{
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      },
+      "enableLiveMetricsFilters": true
+    },
+    "logLevel": {
+      "default": "Warning",
+      "Function": "Information"
+    }
+  },
+  "extensions": {
+    "http": {
+      "routePrefix": "api",
+      "maxOutstandingRequests": 100,
+      "maxConcurrentRequests": 25,
+      "dynamicThrottlesEnabled": true
+    }
+  }
+}
