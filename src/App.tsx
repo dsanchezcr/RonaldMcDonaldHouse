@@ -125,7 +125,7 @@ function App() {
     setBusy('submit')
     setError('')
     try {
-      const fingerprint = await cardFingerprint(blob, language, design.source, config.consentVersion)
+      const fingerprint = await cardFingerprint(state, config.consentVersion)
       const saved = JSON.parse(sessionStorage.getItem('rmh-idempotency') || '{}') as { fingerprint?: string; key?: string }
       const key = saved.fingerprint === fingerprint && saved.key ? saved.key : crypto.randomUUID()
       sessionStorage.setItem('rmh-idempotency', JSON.stringify({ fingerprint, key }))

@@ -17,7 +17,14 @@ function containerClient(): ContainerClient {
 }
 
 export async function sanitizeJpeg(bytes: Buffer, maxBytes = Number(process.env.MAX_UPLOAD_BYTES || 5_000_000)): Promise<Buffer> {
-  if (bytes.length < 4 || bytes.length > maxBytes || bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error('invalid-image')
+  if (
+    bytes.length < 4 ||
+    bytes.length > maxBytes ||
+    bytes[0] !== 0xff ||
+    bytes[1] !== 0xd8 ||
+    bytes[bytes.length - 2] !== 0xff ||
+    bytes[bytes.length - 1] !== 0xd9
+  ) throw new Error('invalid-image')
   const image = sharp(bytes, { failOn: 'error', limitInputPixels: 20_000_000 })
   const metadata = await image.metadata()
   if (metadata.format !== 'jpeg' || !metadata.width || !metadata.height) throw new Error('invalid-image')
