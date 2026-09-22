@@ -40,6 +40,9 @@ param approvedFooterText string
 @description('Consent text version.')
 param consentVersion string
 
+@description('Server-controlled Blob prefix for this event, without leading or trailing slashes.')
+param blobPathPrefix string
+
 @description('AI review deployment name for operational inventory.')
 param aiReviewDeploymentName string = ''
 
@@ -91,7 +94,13 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     supportsHttpsTrafficOnly: true
     networkAcls: {
       bypass: 'AzureServices'
-      defaultAction: 'Allow'
+      defaultAction: 'Deny'
+      resourceAccessRules: [
+        {
+          resourceId: resourceId('Microsoft.Web/sites', functionName)
+          tenantId: subscription().tenantId
+        }
+      ]
     }
   }
 }
@@ -142,7 +151,7 @@ resource retention 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05
             }
             filters: {
               blobTypes: ['blockBlob']
-              prefixMatch: ['${containerName}/2026/10/16/cards/', '${containerName}/idempotency/']
+              prefixMatch: ['${containerName}/${blobPathPrefix}/', '${containerName}/idempotency/']
             }
           }
         }
@@ -190,6 +199,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
         { name: 'STORAGE_ACCOUNT_URL', value: storage.properties.primaryEndpoints.blob }
         { name: 'STORAGE_CONTAINER', value: containerName }
+        { name: 'BLOB_PATH_PREFIX', value: blobPathPrefix }
         { name: 'ALLOWED_ORIGINS', value: join(allowedOrigins, ',') }
         { name: 'CONSENT_VERSION', value: consentVersion }
         { name: 'MAX_UPLOAD_BYTES', value: '5000000' }

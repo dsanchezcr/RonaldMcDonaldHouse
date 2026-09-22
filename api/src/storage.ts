@@ -30,6 +30,7 @@ export async function storeSubmission(
   image: Buffer,
   metadata: { languageCode: string; designSource: string; consentVersion: string },
   idempotencyKey: string,
+  recoveryAttempt = 0,
 ): Promise<StoredSubmission> {
   if (!/^[a-zA-Z0-9-]{16,100}$/u.test(idempotencyKey)) throw new Error('invalid-idempotency-key')
   const container = containerClient()
@@ -49,9 +50,9 @@ export async function storeSubmission(
     const existing = JSON.parse(response.toString()) as Partial<StoredSubmission> & { status?: string }
     if (existing.success && existing.submissionId && existing.submittedUtc) return existing as StoredSubmission
     const staleAfterMs = Number(process.env.IDEMPOTENCY_PENDING_SECONDS || 300) * 1_000
-    if (properties.lastModified && Date.now() - properties.lastModified.getTime() > staleAfterMs && properties.etag) {
+    if (recoveryAttempt === 0 && properties.lastModified && Date.now() - properties.lastModified.getTime() > staleAfterMs && properties.etag) {
       const deleted = await marker.deleteIfExists({ conditions: { ifMatch: properties.etag } }).catch(() => null)
-      if (deleted?.succeeded) return storeSubmission(image, metadata, idempotencyKey)
+      if (deleted?.succeeded) return storeSubmission(image, metadata, idempotencyKey, recoveryAttempt + 1)
     }
     throw new Error('duplicate-pending')
   }
@@ -60,7 +61,8 @@ export async function storeSubmission(
   const submittedUtc = new Date().toISOString()
   const result: StoredSubmission = { success: true, submissionId, submittedUtc }
   try {
-    await container.getBlockBlobClient(`2026/10/16/cards/${submissionId}.jpg`).uploadData(image, {
+    const pathPrefix = (process.env.BLOB_PATH_PREFIX || '2026/10/16/cards').replace(/^\/|\/$/gu, '')
+    await container.getBlockBlobClient(`${pathPrefix}/${submissionId}.jpg`).uploadData(image, {
       blobHTTPHeaders: { blobContentType: 'image/jpeg', blobCacheControl: 'private, no-store' },
       metadata: {
         event: 'rmh-words-of-encouragement-2026',

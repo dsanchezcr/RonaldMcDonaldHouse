@@ -6,6 +6,7 @@
     "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
     "STORAGE_ACCOUNT_URL": "http://127.0.0.1:10000/devstoreaccount1",
     "STORAGE_CONTAINER": "cards",
+    "BLOB_PATH_PREFIX": "2026/10/16/cards",
     "ALLOWED_ORIGINS": "http://localhost:5173",
     "CONSENT_VERSION": "2026-01",
     "MAX_UPLOAD_BYTES": "5000000",

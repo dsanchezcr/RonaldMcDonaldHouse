@@ -39,6 +39,7 @@ jobs:
             staticWebAppName=${{ vars.STATIC_WEB_APP_NAME }}
             retentionDays=${{ vars.RETENTION_DAYS }}
             consentVersion=${{ vars.CONSENT_VERSION }}
+            blobPathPrefix=${{ vars.BLOB_PATH_PREFIX }}
             approvedFooterText="${{ vars.APPROVED_FOOTER_TEXT }}"
             allowedOrigins='${{ vars.ALLOWED_ORIGINS_JSON }}'
           failOnStdErr: true
