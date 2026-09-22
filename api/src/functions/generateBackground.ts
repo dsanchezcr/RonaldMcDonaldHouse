@@ -1,6 +1,6 @@
 import { app, type HttpRequest } from '@azure/functions'
 import { randomUUID } from 'node:crypto'
-import { callJsonModel, contentSafetyConcerns } from '../ai.js'
+import { callJsonModel, contentSafetyConcerns, moderateGeneratedImage } from '../ai.js'
 import { enforceRateLimit, json, publicMessage, requireSecureRequest } from '../http.js'
 import { messageConcerns } from '../validation.js'
 
@@ -23,7 +23,9 @@ app.http('generate-background', {
       const concerns = [...messageConcerns(description), ...(await contentSafetyConcerns(description))]
       if (concerns.length) throw new Error('unsafe-message')
       const endpoint = process.env.AI_IMAGE_ENDPOINT
-      if (!endpoint) return json(request, 503, { message: 'AI image generation is not configured. Please choose an approved design.', requestId })
+      if (!endpoint || !process.env.CONTENT_SAFETY_ENDPOINT || !process.env.IMAGE_MODERATION_ENDPOINT) {
+        return json(request, 503, { message: 'AI image generation is not configured. Please choose an approved design.', requestId })
+      }
       const result = (await callJsonModel(endpoint, {
         prompt: `${description}\n\nRequired constraints:\n${constraints}`,
         size: '1792x1024',
@@ -33,10 +35,11 @@ app.http('generate-background', {
       })) as { data?: Array<{ b64_json?: string; revised_prompt?: string }> }
       const image = result.data?.[0]?.b64_json
       if (!image || Buffer.byteLength(image, 'base64') > 8_000_000) throw new Error('ai-unavailable')
+      const accessibleDescription = await moderateGeneratedImage(image)
       return json(request, 200, {
         status: 'generated',
         imageDataUrl: `data:image/png;base64,${image}`,
-        accessibleDescription: 'AI-generated warm abstract eCard background with an open message area.',
+        accessibleDescription,
         requestId,
       })
     } catch (error) {

@@ -40,7 +40,7 @@ export async function storeSubmission(
       conditions: { ifNoneMatch: '*' },
       blobHTTPHeaders: { blobContentType: 'application/json' },
     })
-  } catch (error) {
+  } catch {
     const response = await marker.downloadToBuffer().catch(() => null)
     if (!response) throw new Error('duplicate-pending')
     const existing = JSON.parse(response.toString()) as Partial<StoredSubmission> & { status?: string }

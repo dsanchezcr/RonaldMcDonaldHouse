@@ -1,4 +1,4 @@
-import type { ReviewResponse, SubmissionResponse } from './types'
+import type { GeneratedBackgroundResponse, ReviewResponse, SubmissionResponse } from './types'
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -14,6 +14,16 @@ export async function reviewMessage(message: string, language: string): Promise<
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, language, action: 'review' }),
+    }),
+  )
+}
+
+export async function generateBackground(description: string, locale: string): Promise<GeneratedBackgroundResponse> {
+  return parseResponse<GeneratedBackgroundResponse>(
+    await fetch('/api/generate-background', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description, stylePreset: 'warm-illustration', locale }),
     }),
   )
 }

@@ -26,6 +26,13 @@ export interface SubmissionResponse {
   submittedUtc: string
 }
 
+export interface GeneratedBackgroundResponse {
+  status: 'generated'
+  imageDataUrl: string
+  accessibleDescription: string
+  requestId: string
+}
+
 export interface CardState {
   design: CardDesign
   message: string

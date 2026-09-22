@@ -33,3 +33,14 @@ export async function contentSafetyConcerns(text: string): Promise<string[]> {
   const threshold = Number(process.env.CONTENT_SAFETY_THRESHOLD || 2)
   return (result.categoriesAnalysis || []).filter((item) => item.severity >= threshold).map((item) => item.category.toLowerCase())
 }
+
+export async function moderateGeneratedImage(imageBase64: string): Promise<string> {
+  const endpoint = process.env.IMAGE_MODERATION_ENDPOINT
+  if (!endpoint) throw new Error('ai-unavailable')
+  const result = (await callJsonModel(endpoint, {
+    imageBase64,
+    checks: ['harm', 'text', 'logo', 'recognizable-character', 'identifiable-person', 'medical-imagery'],
+  })) as { safe?: boolean; accessibleDescription?: string }
+  if (!result.safe) throw new Error('unsafe-message')
+  return result.accessibleDescription || 'AI-generated warm abstract eCard background with an open message area.'
+}

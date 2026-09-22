@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { reviewMessage, submitCard } from './api'
+import { generateBackground, reviewMessage, submitCard } from './api'
 import { cardToBlob, createCardFilename, renderCard } from './cardRenderer'
 import { config, designs, languages } from './config'
 import type { CardDesign, ReviewResponse, SubmissionResponse, TextAlign } from './types'
@@ -24,6 +24,7 @@ function App() {
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState<'review' | 'generate' | 'submit' | null>(null)
   const [review, setReview] = useState<ReviewResponse | null>(null)
+  const [aiPrompt, setAiPrompt] = useState('')
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [submission, setSubmission] = useState<SubmissionResponse | null>(null)
   const [error, setError] = useState('')
@@ -39,7 +40,7 @@ function App() {
 
   useEffect(() => {
     let active = true
-    if (!message.trim()) return
+    if (!state.message.trim()) return
     renderCard(state)
       .then((canvas) => {
         if (!active || !canvasRef.current) return
@@ -86,6 +87,29 @@ function App() {
       setStatus('AI review complete. Review any suggestion before choosing whether to use it.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'AI review is unavailable.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function requestBackground() {
+    setBusy('generate')
+    setError('')
+    try {
+      const result = await generateBackground(aiPrompt, language)
+      setDesign({
+        id: `ai-${result.requestId}`,
+        title: 'Your AI-generated background',
+        description: result.accessibleDescription,
+        image: result.imageDataUrl,
+        source: 'ai-generated',
+        textColor: '#2f241f',
+        panelColor: 'rgba(255, 250, 239, 0.9)',
+      })
+      setImageBlob(null)
+      setStatus('AI background generated. Review it carefully before continuing.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'AI image generation is unavailable.')
     } finally {
       setBusy(null)
     }
@@ -163,8 +187,10 @@ function App() {
             <summary>Create a new background with Microsoft AI (optional)</summary>
             <p>AI generation is a progressive enhancement. The approved catalog remains available if the service is unavailable.</p>
             <label htmlFor="ai-prompt">Describe a warm, family-friendly background</label>
-            <textarea id="ai-prompt" disabled={!config.aiImageEnabled} placeholder="Warm sunshine and small hearts" />
-            <button type="button" disabled>Generate background (requires approved service configuration)</button>
+            <textarea id="ai-prompt" value={aiPrompt} maxLength={300} disabled={!config.aiImageEnabled} onChange={(event) => setAiPrompt(event.target.value)} placeholder="Warm sunshine and small hearts" />
+            <button type="button" disabled={!config.aiImageEnabled || aiPrompt.trim().length < 3 || busy !== null} onClick={requestBackground}>
+              {busy === 'generate' ? 'Generating…' : config.aiImageEnabled ? 'Generate background' : 'AI image generation is not enabled'}
+            </button>
           </details>
         </section>
 

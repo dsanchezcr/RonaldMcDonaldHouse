@@ -33,7 +33,7 @@ app.http('review-message', {
         })
       }
       const endpoint = process.env.AI_REVIEW_ENDPOINT
-      if (!endpoint) {
+      if (!endpoint || !process.env.CONTENT_SAFETY_ENDPOINT) {
         return json(request, 503, { message: 'AI review is not configured. You can continue without it.', requestId })
       }
       const modelResult = (await callJsonModel(endpoint, {
@@ -47,11 +47,16 @@ app.http('review-message', {
       const content = modelResult.choices?.[0]?.message?.content
       if (!content) throw new Error('ai-unavailable')
       const result = JSON.parse(content) as Record<string, unknown>
+      const suggestion = typeof result.suggestedRevision === 'string' ? result.suggestedRevision : undefined
+      if (suggestion) {
+        const outputConcerns = [...messageConcerns(suggestion), ...(await contentSafetyConcerns(suggestion))]
+        if (outputConcerns.length) throw new Error('unsafe-message')
+      }
       return json(request, 200, {
-        status: result.status,
-        safetyClassification: result.safetyClassification,
+        status: result.status === 'suggestion' ? 'suggestion' : 'approved',
+        safetyClassification: result.safetyClassification === 'needs-revision' ? 'needs-revision' : 'safe',
         detectedConcerns: Array.isArray(result.detectedConcerns) ? result.detectedConcerns : [],
-        suggestedRevision: typeof result.suggestedRevision === 'string' ? result.suggestedRevision : undefined,
+        suggestedRevision: suggestion,
         explanation: typeof result.explanation === 'string' ? result.explanation : 'Review complete.',
         requestId,
       })
