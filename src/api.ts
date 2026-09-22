@@ -48,3 +48,18 @@ export async function submitCard(
     }),
   )
 }
+
+export async function cardFingerprint(
+  image: Blob,
+  language: string,
+  designSource: string,
+  consentVersion: string,
+): Promise<string> {
+  const metadata = new TextEncoder().encode(`${language}:${designSource}:${consentVersion}`)
+  const imageBytes = new Uint8Array(await image.arrayBuffer())
+  const combined = new Uint8Array(metadata.length + imageBytes.length)
+  combined.set(metadata)
+  combined.set(imageBytes, metadata.length)
+  const digest = await crypto.subtle.digest('SHA-256', combined)
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+}

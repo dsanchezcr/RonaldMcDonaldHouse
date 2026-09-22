@@ -193,6 +193,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'ALLOWED_ORIGINS', value: join(allowedOrigins, ',') }
         { name: 'CONSENT_VERSION', value: consentVersion }
         { name: 'MAX_UPLOAD_BYTES', value: '5000000' }
+        { name: 'IDEMPOTENCY_PENDING_SECONDS', value: '300' }
         { name: 'SUPPORTED_LANGUAGES', value: 'en,es,fr,pt,ar,he' }
         { name: 'AI_REVIEW_ENABLED', value: string(aiReviewEnabled) }
         { name: 'AI_IMAGE_ENABLED', value: string(aiImageEnabled) }

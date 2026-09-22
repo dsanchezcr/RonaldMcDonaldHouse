@@ -9,6 +9,7 @@
     "ALLOWED_ORIGINS": "http://localhost:5173",
     "CONSENT_VERSION": "2026-01",
     "MAX_UPLOAD_BYTES": "5000000",
+    "IDEMPOTENCY_PENDING_SECONDS": "300",
     "SUPPORTED_LANGUAGES": "en,es,fr,pt,ar,he",
     "AI_REVIEW_ENDPOINT": "",
     "AI_IMAGE_ENDPOINT": "",

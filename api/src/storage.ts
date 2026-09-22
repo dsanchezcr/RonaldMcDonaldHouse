@@ -41,10 +41,18 @@ export async function storeSubmission(
       blobHTTPHeaders: { blobContentType: 'application/json' },
     })
   } catch {
-    const response = await marker.downloadToBuffer().catch(() => null)
-    if (!response) throw new Error('duplicate-pending')
+    const [response, properties] = await Promise.all([
+      marker.downloadToBuffer().catch(() => null),
+      marker.getProperties().catch(() => null),
+    ])
+    if (!response || !properties) throw new Error('duplicate-pending')
     const existing = JSON.parse(response.toString()) as Partial<StoredSubmission> & { status?: string }
     if (existing.success && existing.submissionId && existing.submittedUtc) return existing as StoredSubmission
+    const staleAfterMs = Number(process.env.IDEMPOTENCY_PENDING_SECONDS || 300) * 1_000
+    if (properties.lastModified && Date.now() - properties.lastModified.getTime() > staleAfterMs && properties.etag) {
+      const deleted = await marker.deleteIfExists({ conditions: { ifMatch: properties.etag } }).catch(() => null)
+      if (deleted?.succeeded) return storeSubmission(image, metadata, idempotencyKey)
+    }
     throw new Error('duplicate-pending')
   }
 

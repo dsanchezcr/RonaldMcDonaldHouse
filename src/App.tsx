@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { generateBackground, reviewMessage, submitCard } from './api'
+import { cardFingerprint, generateBackground, reviewMessage, submitCard } from './api'
 import { cardToBlob, createCardFilename, renderCard } from './cardRenderer'
 import { config, designs, languages } from './config'
 import type { CardDesign, ReviewResponse, SubmissionResponse, TextAlign } from './types'
@@ -125,12 +125,14 @@ function App() {
     setBusy('submit')
     setError('')
     try {
-      const key = sessionStorage.getItem('rmh-idempotency-key') || crypto.randomUUID()
-      sessionStorage.setItem('rmh-idempotency-key', key)
+      const fingerprint = await cardFingerprint(blob, language, design.source, config.consentVersion)
+      const saved = JSON.parse(sessionStorage.getItem('rmh-idempotency') || '{}') as { fingerprint?: string; key?: string }
+      const key = saved.fingerprint === fingerprint && saved.key ? saved.key : crypto.randomUUID()
+      sessionStorage.setItem('rmh-idempotency', JSON.stringify({ fingerprint, key }))
       const result = await submitCard(blob, language, design.source, config.consentVersion, key)
       setSubmission(result)
       setStatus('Card submission succeeded.')
-      sessionStorage.removeItem('rmh-idempotency-key')
+      sessionStorage.removeItem('rmh-idempotency')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Submission failed. Your card remains available to download or retry.')
     } finally {
