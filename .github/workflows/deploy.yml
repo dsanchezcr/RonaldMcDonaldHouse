@@ -54,10 +54,11 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           action: upload
-          app_location: dist
+          app_location: .
           api_location: api
-          skip_app_build: true
-          skip_api_build: true
+          output_location: dist
+          app_build_command: npm run build
+          api_build_command: npm --prefix api run build
 
   deploy-preview:
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
@@ -86,10 +87,11 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: dist
+          app_location: .
           api_location: api
-          skip_app_build: true
-          skip_api_build: true
+          output_location: dist
+          app_build_command: npm run build
+          api_build_command: npm --prefix api run build
 
   close-preview:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
