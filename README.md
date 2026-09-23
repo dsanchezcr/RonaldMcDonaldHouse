@@ -2,8 +2,6 @@
 
 An anonymous, accessible eCard experience for the Americas SE&O & EPS GIVE Campaign 2026. Volunteers select approved artwork or optionally generate a background with Microsoft AI, write and optionally AI-review a supportive message, render a 1600×900 JPG locally, submit it through a managed Static Web Apps API, and then open the Microsoft Giving Portal.
 
-> **Not production-ready until approvals are complete.** The repository now contains event-provided logo and catalog artwork. Complete every item in [Readiness checklist](#readiness-checklist) before presenting the app as an official service.
-
 ## Architecture
 
 ```text
@@ -81,26 +79,3 @@ Focused tests cover message/PII validation, character limits, RTL handling, non-
 ## Data flow and privacy
 
 Card composition remains in browser memory until submission. Review sends only message/language to the review endpoint; generation sends only the design prompt. Generated images are checked by the server-side moderation endpoint before returning to the browser. Submission sends a re-rendered JPEG and allowlisted metadata. The Function validates request type/size, decodes and re-encodes the JPEG, generates its ID/path, and writes it with a server-side storage connection string. No message, name, prompt, image, request body, direct URL, raw IP, or service key is logged. Rate-limit keys are one-way daily hashes held only in function memory.
-
-## Assumptions and owner approvals
-
-1. Event owners have provided approved logo and six exported 16:9 template files plus verified alt text.
-2. Brand/legal owners will approve footer text, catalog descriptions, writing guidance, event details, and whether religious statements are allowed.
-3. Privacy/security owners will approve retention days, telemetry retention/sampling, allowed origins, Front Door/WAF or equivalent edge abuse controls, and anonymous access.
-4. Responsible AI owners will approve model deployments, supported languages, safety thresholds, prompts, image-output moderation, retry limits, and whether image payloads may be returned to the browser.
-5. Azure owners will approve regions, resource names/SKUs, key storage/rotation, networking, and production monitoring.
-6. Event owners will confirm the consent version and the Giving Portal guidance.
-
-## Readiness checklist
-
-- [x] Replace placeholder logo/catalog assets with approved, undistorted files.
-- [ ] Enter approved legal text, retention, origins, consent version, resource names, AI deployment names, and thresholds.
-- [ ] Confirm Content Safety is mandatory whenever either AI feature is enabled.
-- [ ] Validate generated images for text/logos/people/distressing imagery with the in-repo moderation endpoint plus any additional approved Responsible AI checks required before production.
-- [ ] Complete privacy, threat-model, accessibility, Responsible AI, and brand/legal reviews.
-- [ ] Run unit/component/integration/E2E suites and the manual 200% zoom, keyboard, screen-reader, RTL, high-contrast, and mobile checks.
-- [ ] Test Azure-backed local execution and a non-production Azure environment, including duplicate upload, storage outage, AI outage, CORS, rate limiting, moderation failures, and rollback.
-- [ ] Configure GitHub production/staging variables, deployment token, monitoring alerts, retention policy, WAF/rate limiting, and operational ownership.
-- [ ] Obtain final go-live approval; do not present the app as an official Ronald McDonald House service without authorization.
-
-More detail: [Threat model](docs/threat-model.md), [privacy and Responsible AI](docs/privacy-responsible-ai.md), [operations runbook](docs/operations-runbook.md), and [asset/content guide](docs/asset-content-guide.md).

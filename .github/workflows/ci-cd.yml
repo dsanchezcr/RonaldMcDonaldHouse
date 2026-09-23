@@ -1,10 +1,11 @@
-name: Deploy
+name: CI/CD
 
 on:
   push:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: npm ci && npm ci --prefix api
       - name: Validate and build
-        run: npm run check && npm run check:api
+        run: npm run check && npm run check:api && az bicep build --file infra/main.bicep
 
   deploy-production:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -34,23 +35,12 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.4.0
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            api/package-lock.json
-      - name: Install dependencies
-        run: npm ci && npm ci --prefix api
-      - name: Build production artifacts
+      - uses: Azure/static-web-apps-deploy@v1
         env:
           VITE_AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
           VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
           VITE_CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
           VITE_APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
-        run: npm run build && npm run build --prefix api
-      - uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           action: upload
@@ -58,7 +48,7 @@ jobs:
           api_location: api
           output_location: dist
           app_build_command: npm run build
-          api_build_command: npm --prefix api run build
+          api_build_command: npm run build
 
   deploy-preview:
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
@@ -66,23 +56,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.4.0
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            api/package-lock.json
-      - name: Install dependencies
-        run: npm ci && npm ci --prefix api
-      - name: Build staging artifacts
+      - uses: Azure/static-web-apps-deploy@v1
         env:
           VITE_AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
           VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
           VITE_CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
           VITE_APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
-        run: npm run build && npm run build --prefix api
-      - uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -91,7 +70,7 @@ jobs:
           api_location: api
           output_location: dist
           app_build_command: npm run build
-          api_build_command: npm --prefix api run build
+          api_build_command: npm run build
 
   close-preview:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
