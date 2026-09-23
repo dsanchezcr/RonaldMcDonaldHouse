@@ -5,6 +5,9 @@
   "private": true,
   "type": "module",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=22 <25"
+  },
   "scripts": {
     "build": "tsc",
     "start": "func start",
