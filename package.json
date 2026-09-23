@@ -1,0 +1,49 @@
+{
+  "name": "words-of-encouragement",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "npm run lint && npm test && npm run build",
+    "check:api": "npm --prefix api run check"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "overrides": {
+    "jsdom": {
+      "whatwg-url": "17.1.1",
+      "undici": "8.10.2"
+    },
+    "tldts": "7.4.13",
+    "tldts-core": "7.4.13",
+    "rolldown": "1.2.8",
+    "ast-v8-to-istanbul": "1.0.6",
+    "@exodus/bytes": "1.15.1",
+    "@babel/parser": "7.29.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "24.13.4",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.0.1",
+    "axe-core": "^4.13.0",
+    "jsdom": "30.0.1",
+    "oxlint": "1.83.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}
