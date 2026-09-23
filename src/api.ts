@@ -1,5 +1,9 @@
 import type { CardState, GeneratedBackgroundResponse, ReviewResponse, SubmissionResponse } from './types'
 
+export function resolveApiUrl(path: string, baseUrl = import.meta.env.VITE_API_BASE_URL || ''): string {
+  return `${baseUrl.replace(/\/+$/u, '')}${path}`
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { message?: string }
@@ -10,7 +14,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
 export async function reviewMessage(message: string, language: string): Promise<ReviewResponse> {
   return parseResponse<ReviewResponse>(
-    await fetch('/api/review-message', {
+    await fetch(resolveApiUrl('/api/review-message'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, language, action: 'review' }),
@@ -20,7 +24,7 @@ export async function reviewMessage(message: string, language: string): Promise<
 
 export async function generateBackground(description: string, locale: string): Promise<GeneratedBackgroundResponse> {
   return parseResponse<GeneratedBackgroundResponse>(
-    await fetch('/api/generate-background', {
+    await fetch(resolveApiUrl('/api/generate-background'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description, stylePreset: 'warm-illustration', locale }),
@@ -41,7 +45,7 @@ export async function submitCard(
   form.append('designSource', designSource)
   form.append('consentVersion', consentVersion)
   return parseResponse<SubmissionResponse>(
-    await fetch('/api/submit-card', {
+    await fetch(resolveApiUrl('/api/submit-card'), {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
       body: form,

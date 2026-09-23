@@ -4,6 +4,8 @@
   "parameters": {
     "environment": { "value": "dev" },
     "staticWebAppName": { "value": "REPLACE_WITH_GLOBALLY_UNIQUE_NAME" },
+    "functionAppName": { "value": "REPLACE_WITH_GLOBALLY_UNIQUE_FUNCTION_APP_NAME" },
+    "githubRepository": { "value": "owner/repository" },
     "allowedOrigins": { "value": ["https://REPLACE_WITH_APPROVED_HOST"] },
     "retentionDays": { "value": "REPLACE_WITH_EVENT_OWNER_APPROVED_RETENTION_DAYS" },
     "approvedFooterText": { "value": "REPLACE_WITH_EVENT_OWNER_APPROVED_LEGAL_TEXT" },

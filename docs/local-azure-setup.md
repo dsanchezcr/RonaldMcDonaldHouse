@@ -8,15 +8,15 @@ Full functionality requires these Azure services and deployments:
 
 | Area | Azure service | Created by this repo? | Required for |
 | --- | --- | --- | --- |
-| Frontend hosting | Azure Static Web Apps Standard | Yes, `infra/main.bicep` | Browser app hosting and managed API routing |
-| API hosting | Azure Static Web Apps managed Functions | Yes, deployed from `api/` by Static Web Apps | `/api/health`, `/api/review-message`, `/api/generate-background`, `/api/moderate-image`, `/api/submit-card` |
+| Frontend hosting | Azure Static Web Apps Standard | Yes, `infra/main.bicep` | Browser app hosting and pull-request previews |
+| API hosting | Linux Azure Function App on Flex Consumption | Yes, `infra/main.bicep`, deployed from `api/` by GitHub Actions | `/api/health`, `/api/review-message`, `/api/generate-background`, `/api/moderate-image`, `/api/submit-card` |
 | Card storage | Azure Storage account and private Blob container | Yes, `infra/main.bicep` | Submitted JPG storage, idempotency markers, retention policy |
 | Monitoring | Application Insights and Log Analytics | Yes, `infra/main.bicep` | Availability, failures, latency, privacy-safe operational telemetry |
 | Text review model | Azure OpenAI / Foundry chat deployment | No | Optional AI message review |
 | Image generation model | Azure OpenAI / Foundry image deployment | No | Optional AI background generation |
 | Text safety | Azure AI Content Safety | No | Prompt/message safety screening |
-| Generated-image policy | Static Web Apps managed Function `/api/moderate-image` plus Azure AI Content Safety image analysis | Yes, code is in this repo | Required before enabling AI image generation |
-| App deployment | Static Web Apps deployment token | No | GitHub Actions app-only deploys to the existing Static Web App |
+| Generated-image policy | Dedicated Function App `/api/moderate-image` plus Azure AI Content Safety image analysis | Yes, code is in this repo | Required before enabling AI image generation |
+| App deployment | Static Web Apps token and Azure OIDC identity | No | GitHub Actions deploys the frontend and dedicated Function App separately |
 | Infrastructure deployment | Local Azure CLI account or reviewed deployment identity | No | Bicep deployment only when resources must be created or updated |
 
 The app can run without AI image generation by setting `VITE_AI_IMAGE_ENABLED=false`. When image generation is enabled, `/api/moderate-image` must also be configured with `IMAGE_MODERATION_KEY` and Content Safety settings.
@@ -25,11 +25,12 @@ The app can run without AI image generation by setting `VITE_AI_IMAGE_ENABLED=fa
 
 `infra/main.bicep` creates these resources:
 
-- Azure Static Web Apps Standard with managed Functions from the `api/` folder
+- Azure Static Web Apps Standard for the frontend
+- Linux Flex Consumption (`FC1`) Function App for the `api/` folder
 - A private Storage account and `cards` Blob container
 - A Blob lifecycle policy for the approved retention period
 - Application Insights and Log Analytics
-- Function app settings for server-side Azure service keys and the storage connection string
+- Function App settings for server-side Azure service keys and the storage connection string
 
 The template does **not** create model deployments or Azure AI Content Safety. Create those separately before enabling the corresponding AI features. The image moderation endpoint is implemented in this repo and deployed as part of the managed API.
 
@@ -39,7 +40,7 @@ The template does **not** create model deployments or Azure AI Content Safety. C
 | Message review | Azure OpenAI chat model | `AI_REVIEW_ENDPOINT`, `AI_API_KEY` |
 | Prompt/output text safety | Azure AI Content Safety | `CONTENT_SAFETY_ENDPOINT`, `CONTENT_SAFETY_KEY` |
 | Background generation | Azure OpenAI DALL-E-3-compatible deployment | `AI_IMAGE_ENDPOINT`, `AI_API_KEY` |
-| Generated-image policy | `/api/moderate-image` managed Function | `IMAGE_MODERATION_ENDPOINT`, `IMAGE_MODERATION_KEY` |
+| Generated-image policy | `/api/moderate-image` Function App endpoint | `IMAGE_MODERATION_ENDPOINT`, `IMAGE_MODERATION_KEY` |
 
 > Azure AI Content Safety checks image harm categories. The in-repo moderation endpoint wraps that check and fails closed, but additional approved checks may still be required before production for text, logos, recognizable characters, identifiable people, and medical imagery.
 
@@ -231,10 +232,10 @@ For local testing use:
 $imageModerationEndpoint = 'http://localhost:7071/api/moderate-image'
 ```
 
-For cloud use:
+For the dedicated Function App in cloud, Bicep defaults this endpoint to the Function App hostname:
 
 ```powershell
-$imageModerationEndpoint = 'https://<static-web-app-hostname>/api/moderate-image'
+$imageModerationEndpoint = 'https://<function-app-name>.azurewebsites.net/api/moderate-image'
 ```
 
 Store `IMAGE_MODERATION_KEY` only in ignored local settings, Static Web Apps app settings, GitHub secrets, or Key Vault references. Never expose it to the browser.
@@ -292,7 +293,7 @@ If the resource group, Static Web App, Storage account, Application Insights, an
 
 Copy `infra/example.parameters.json` to an ignored environment-specific file such as `infra/dev.parameters.json`. Replace every placeholder. Use an approved integer retention period and initially use an empty `allowedOrigins` array while obtaining the generated Static Web App hostname.
 
-The API is deployed as Azure Static Web Apps managed Functions. No separate Function App, App Service plan, `Y1`, or `B1` quota is required.
+The API is deployed as a dedicated Linux Flex Consumption Function App. This is the current serverless Consumption option; it replaces the managed Static Web Apps API and does not require an App Service plan tier such as `B1` or `Y1`.
 
 Add these optional AI parameters when enabling AI:
 
@@ -304,7 +305,7 @@ Add these optional AI parameters when enabling AI:
 "aiApiKey": { "value": "<azure-openai-key>" },
 "contentSafetyEndpoint": { "value": "<content-safety-base-endpoint>" },
 "contentSafetyKey": { "value": "<content-safety-key>" },
-"imageModerationEndpoint": { "value": "https://<static-web-app-hostname>/api/moderate-image" },
+"imageModerationEndpoint": { "value": "https://<function-app-name>.azurewebsites.net/api/moderate-image" },
 "imageModerationKey": { "value": "<image-moderation-key>" },
 "aiReviewDeploymentName": { "value": "<chat-deployment-name>" },
 "aiImageDeploymentName": { "value": "<image-deployment-name>" }
@@ -346,9 +347,15 @@ $staticHostname = az deployment group show `
 $storageAccountName = az deployment group show `
   --name $deploymentName --resource-group $resourceGroup `
   --query properties.outputs.storageAccountName.value --output tsv
+$functionAppName = az deployment group show `
+  --name $deploymentName --resource-group $resourceGroup `
+  --query properties.outputs.functionAppName.value --output tsv
+$functionAppUrl = az deployment group show `
+  --name $deploymentName --resource-group $resourceGroup `
+  --query properties.outputs.functionAppUrl.value --output tsv
 ```
 
-Replace `allowedOrigins` in `infra/dev.parameters.json` with `https://$staticHostname`, then rerun `az deployment group create` so browser and Function CORS match the deployed site.
+Set the GitHub variable `VITE_API_BASE_URL` to `$functionAppUrl`. Set `allowedOrigins` to the production Static Web App hostname; the template also permits Static Web Apps preview hostnames without credentials.
 
 ## 8. Build and deploy code
 
@@ -366,7 +373,29 @@ npm run build
 npm run build --prefix api
 ```
 
-Deploy the prebuilt Vite output and the managed Functions API from `api/`. The token is held only in a process variable:
+Deploy the Function App first. Configure a GitHub OpenID Connect identity with the `Website Contributor` role scoped to the Function App, then add these GitHub **secrets**: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`. Add `AZURE_FUNCTIONAPP_NAME` and `VITE_API_BASE_URL` as GitHub **variables**. The workflow performs the Function deployment after validation.
+
+`infra/main.bicep` creates the scoped GitHub OIDC identity and federation rule for the `production` environment. After deployment, create these GitHub repository settings:
+
+| Type | Name | Source |
+| --- | --- | --- |
+| Secret | `AZURE_CLIENT_ID` | `githubDeploymentClientId` Bicep output |
+| Secret | `AZURE_TENANT_ID` | Microsoft Entra tenant ID |
+| Secret | `AZURE_SUBSCRIPTION_ID` | Subscription containing the Function App |
+| Variable | `AZURE_FUNCTIONAPP_NAME` | `functionAppName` Bicep output |
+| Variable | `VITE_API_BASE_URL` | `functionAppUrl` Bicep output, without a trailing slash |
+
+The OIDC identity is trusted only for `dsanchezcr/RonaldMcDonaldHouse` deployments using the GitHub `production` environment. It has `Website Contributor` on the Function App only.
+
+For a one-time local Function deployment after Bicep provisioning, use Azure Functions Core Tools while authenticated to the target subscription:
+
+```powershell
+Push-Location api
+func azure functionapp publish $functionAppName --typescript --build remote
+Pop-Location
+```
+
+Deploy the prebuilt Vite output separately. The token is held only in a process variable:
 
 ```powershell
 $deploymentToken = az staticwebapp secrets list `
@@ -377,7 +406,6 @@ $deploymentToken = az staticwebapp secrets list `
 
 npx --yes @azure/static-web-apps-cli deploy ./dist `
   --deployment-token $deploymentToken `
-  --api-location api `
   --env production
 
 Remove-Variable deploymentToken
@@ -389,16 +417,15 @@ For GitHub Actions deployments, configure these environment secrets when the cor
 
 | Secret | Required when |
 | --- | --- |
-| `AI_API_KEY` | AI review or AI image generation is enabled |
-| `CONTENT_SAFETY_KEY` | AI review or AI image generation is enabled |
-| `IMAGE_MODERATION_KEY` | AI image generation is enabled |
 | `STATIC_WEB_APP_DEPLOYMENT_TOKEN` | Static Web Apps upload is used |
+| `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | OIDC deployment to the dedicated Function App |
 
 Configure these environment variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `STATIC_WEB_APP_NAME` | Static Web App resource name |
+| `AZURE_FUNCTIONAPP_NAME` | Dedicated Function App resource name |
+| `VITE_API_BASE_URL` | Dedicated Function App HTTPS origin, without `/api` suffix |
 | `AI_REVIEW_ENABLED`, `AI_IMAGE_ENABLED`, `CONSENT_VERSION`, `APPROVED_FOOTER_TEXT` | Vite build-time app configuration |
 
 If you deploy locally, pass secure parameters in an ignored parameters file or with command-line parameters. Do not commit real keys.
@@ -406,7 +433,7 @@ If you deploy locally, pass secure parameters in an ignored parameters file or w
 ## 9. Verify the deployed environment
 
 ```powershell
-Invoke-RestMethod "https://$staticHostname/api/health"
+Invoke-RestMethod "$functionAppUrl/api/health"
 az storage container show `
   --account-name $storageAccountName `
   --name cards `
@@ -427,7 +454,7 @@ Verify AI endpoints directly from the deployed site:
 
 ```powershell
 $reviewBody = @{ message = 'Wishing you comfort and encouragement today.'; language = 'en'; action = 'review' } | ConvertTo-Json
-Invoke-RestMethod "https://$staticHostname/api/review-message" `
+Invoke-RestMethod "$functionAppUrl/api/review-message" `
   -Method Post `
   -ContentType 'application/json' `
   -Body $reviewBody
@@ -437,7 +464,7 @@ Only run this image-generation smoke test after `VITE_AI_IMAGE_ENABLED=true` was
 
 ```powershell
 $imageBody = @{ description = 'warm abstract sunshine with open message space'; stylePreset = 'warm'; locale = 'en' } | ConvertTo-Json
-Invoke-RestMethod "https://$staticHostname/api/generate-background" `
+Invoke-RestMethod "$functionAppUrl/api/generate-background" `
   -Method Post `
   -ContentType 'application/json' `
   -Body $imageBody
