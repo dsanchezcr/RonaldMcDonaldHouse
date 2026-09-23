@@ -35,7 +35,8 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4.2.2
-      - uses: Azure/static-web-apps-deploy@v1
+      - id: deploy
+        uses: Azure/static-web-apps-deploy@v1
         env:
           VITE_AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
           VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
@@ -49,6 +50,14 @@ jobs:
           output_location: dist
           app_build_command: npm run build
           api_build_command: npm run build
+      - name: Publish production URL
+        run: |
+          {
+            echo '## Production deployment'
+            echo ''
+            echo '- **Application:** ${{ steps.deploy.outputs.static_web_app_url }}'
+            echo '- **API health:** ${{ steps.deploy.outputs.static_web_app_url }}/api/health'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-preview:
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
@@ -56,7 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
-      - uses: Azure/static-web-apps-deploy@v1
+      - id: deploy
+        uses: Azure/static-web-apps-deploy@v1
         env:
           VITE_AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
           VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
@@ -71,6 +81,15 @@ jobs:
           output_location: dist
           app_build_command: npm run build
           api_build_command: npm run build
+      - name: Publish preview URL
+        run: |
+          {
+            echo '## Preview deployment'
+            echo ''
+            echo '- **Pull request:** #${{ github.event.pull_request.number }}'
+            echo '- **Application:** ${{ steps.deploy.outputs.static_web_app_url }}'
+            echo '- **API health:** ${{ steps.deploy.outputs.static_web_app_url }}/api/health'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   close-preview:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
