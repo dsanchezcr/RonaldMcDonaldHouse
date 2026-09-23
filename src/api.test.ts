@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cardFingerprint } from './api'
+import { cardFingerprint, resolveApiUrl } from './api'
 import { designs } from './config'
 
 describe('submission fingerprint', () => {
@@ -12,5 +12,14 @@ describe('submission fingerprint', () => {
     expect(retry).toBe(first)
     expect(changedCard).not.toBe(first)
     expect(changedLanguage).not.toBe(first)
+  })
+})
+
+describe('API URL resolution', () => {
+  it('keeps local relative API paths and normalizes a configured Function App URL', () => {
+    expect(resolveApiUrl('/api/health', '')).toBe('/api/health')
+    expect(resolveApiUrl('/api/health', 'https://rmh-ecard-api.azurewebsites.net/')).toBe(
+      'https://rmh-ecard-api.azurewebsites.net/api/health',
+    )
   })
 })

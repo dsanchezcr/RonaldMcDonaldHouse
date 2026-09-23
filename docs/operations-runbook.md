@@ -5,8 +5,9 @@
 1. Approve all readiness items and configure GitHub `production` and optional `staging` environments.
 2. Configure variables and secrets documented in `.env.example`, `api/local.settings.example.json`, and `infra/main.bicep`. Never store values in source.
 3. Provision or update Azure resources through reviewed Bicep only when infrastructure changes are required.
-4. For app-only changes, let GitHub Actions build/test first, deploy production from `main`, and deploy pull request previews for review.
-5. Verify health, restrictive headers/CORS, private container access, server-side key upload, lifecycle policy, telemetry redaction, AI review/generation behavior, moderation failures, and the exact Giving Portal URL.
+4. Provision Function App infrastructure through a reviewed Bicep deployment before the first code deployment; do not place Azure service keys in GitHub workflow files.
+5. For app-only changes, let GitHub Actions build/test first, deploy the dedicated Function App from `main` through OIDC, then deploy the static frontend. Pull request previews use the existing deployed API.
+6. Verify the Function App `/api/health` endpoint, restrictive headers/CORS, private container access, server-side key upload, lifecycle policy, telemetry redaction, AI review/generation behavior, moderation failures, and the exact Giving Portal URL.
 
 ## Monitoring
 
@@ -19,7 +20,7 @@ Disable AI independently with flags/endpoints. For upload abuse or privacy risk,
 ## Rollback
 
 1. Disable optional AI flags first if the issue is AI-specific.
-2. Redeploy the last known-good immutable artifact/commit through the production environment approval; do not rewrite branch history.
+2. Redeploy the last known-good immutable artifact/commit through the production environment approval; deploy the Function App before the frontend and do not rewrite branch history.
 3. If infrastructure caused the issue, restore the last approved Bicep parameters/template. Never delete the storage account during application rollback.
 4. Validate health, upload, idempotency, CORS, retention, and monitoring.
 5. Reconcile cards/idempotency markers created during the incident under the approved retention/deletion process.

@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
   pull-requests: write
 
 jobs:
@@ -28,9 +29,31 @@ jobs:
       - name: Validate and build
         run: npm run check && npm run check:api && az bicep build --file infra/main.bicep
 
-  deploy-production:
+  deploy-function-production:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - id: deploy-api
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          package: api
+          remote-build: true
+          respect-funcignore: true
+      - name: Verify Function App health
+        run: curl --fail --retry 5 --retry-delay 5 "${{ vars.VITE_API_BASE_URL }}/api/health"
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: deploy-function-production
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -42,21 +65,21 @@ jobs:
           VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
           VITE_CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
           VITE_APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         with:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           action: upload
           app_location: .
-          api_location: api
           output_location: dist
           app_build_command: npm run build
-          api_build_command: npm run build
       - name: Publish production URL
         run: |
           {
             echo '## Production deployment'
             echo ''
             echo '- **Application:** ${{ steps.deploy.outputs.static_web_app_url }}'
-            echo '- **API health:** ${{ steps.deploy.outputs.static_web_app_url }}/api/health'
+            echo '- **API:** ${{ vars.VITE_API_BASE_URL }}'
+            echo '- **API health:** ${{ vars.VITE_API_BASE_URL }}/api/health'
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-preview:
@@ -72,15 +95,14 @@ jobs:
           VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
           VITE_CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
           VITE_APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         with:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: .
-          api_location: api
           output_location: dist
           app_build_command: npm run build
-          api_build_command: npm run build
       - name: Publish preview URL
         run: |
           {
@@ -88,7 +110,8 @@ jobs:
             echo ''
             echo '- **Pull request:** #${{ github.event.pull_request.number }}'
             echo '- **Application:** ${{ steps.deploy.outputs.static_web_app_url }}'
-            echo '- **API health:** ${{ steps.deploy.outputs.static_web_app_url }}/api/health'
+            echo '- **API:** ${{ vars.VITE_API_BASE_URL }}'
+            echo '- **API health:** ${{ vars.VITE_API_BASE_URL }}/api/health'
           } >> "$GITHUB_STEP_SUMMARY"
 
   close-preview:

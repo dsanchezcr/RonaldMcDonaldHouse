@@ -1,17 +1,17 @@
 # Words of Encouragement eCard
 
-An anonymous, accessible eCard experience for the Americas SE&O & EPS GIVE Campaign 2026. Volunteers select approved artwork or optionally generate a background with Microsoft AI, write and optionally AI-review a supportive message, render a 1600×900 JPG locally, submit it through a managed Static Web Apps API, and then open the Microsoft Giving Portal.
+An anonymous, accessible eCard experience for the Americas SE&O & EPS GIVE Campaign 2026. Volunteers select approved artwork or optionally generate a background with Microsoft AI, write and optionally AI-review a supportive message, render a 1600×900 JPG locally, submit it through a dedicated Azure Function App API, and then open the Microsoft Giving Portal.
 
 ## Architecture
 
 ```text
 Browser (React + Canvas)
   ├─ approved catalog remains usable without AI
-  ├─ POST /api/review-message ─┐
-  ├─ POST /api/generate-background ─┐
-  ├─ POST /api/moderate-image ────── Azure Static Web Apps managed Functions ─ Azure OpenAI / Content Safety (server-side keys)
-  └─ POST /api/submit-card ─────────┘                                             └─ private Blob container (server-side storage key)
-Azure Static Web Apps ─ managed /api Functions
+  ├─ POST <Function App>/api/review-message ─┐
+  ├─ POST <Function App>/api/generate-background ─┐
+  ├─ POST <Function App>/api/moderate-image ────── Linux Flex Consumption Function App ─ Azure OpenAI / Content Safety (server-side keys)
+  └─ POST <Function App>/api/submit-card ─────────┘                                  └─ private Blob container (server-side storage key)
+Azure Static Web Apps ─ React frontend
 Application Insights ─ privacy-safe operational telemetry; no request bodies
 ```
 
@@ -19,8 +19,8 @@ Application Insights ─ privacy-safe operational telemetry; no request bodies
 - **API:** Node 22 Azure Functions v4. The browser receives no Azure credentials.
 - **Storage:** private Blob container; server-generated paths; JPEG decode/re-encode strips metadata; distributed Blob idempotency markers.
 - **AI:** optional Azure OpenAI endpoints authenticated with server-side keys; fixed prompts; Azure AI Content Safety text/image hooks; in-repo image moderation endpoint for generated backgrounds.
-- **Infrastructure:** Bicep for Static Web Apps, Storage, Log Analytics, Application Insights, app settings, configurable retention, HTTPS/TLS settings, and restricted CORS.
-- **Delivery:** GitHub Actions validates every push/PR, deploys production automatically after `main` succeeds, and creates Static Web Apps preview environments for pull requests.
+- **Infrastructure:** Bicep for Static Web Apps, Linux Flex Consumption Function App, Storage, Log Analytics, Application Insights, app settings, configurable retention, HTTPS/TLS settings, and restricted CORS.
+- **Delivery:** GitHub Actions validates every push/PR, deploys the Function App through Azure OIDC after `main` succeeds, then deploys the static frontend. Pull requests receive Static Web Apps previews that use the deployed Function App API.
 
 ## UX and component hierarchy
 
@@ -64,6 +64,10 @@ npm run dev
 ```
 
 For Azure-backed local testing, set `AzureWebJobsStorage`, `STORAGE_CONNECTION_STRING`, `AI_API_KEY`, `CONTENT_SAFETY_KEY`, `IMAGE_MODERATION_KEY`, and the endpoint values in ignored `api/local.settings.json`. Use `http://localhost:7071/api/moderate-image` for `IMAGE_MODERATION_ENDPOINT` while Functions runs locally. Never copy storage or AI keys into front-end variables.
+
+For a deployed frontend, set `VITE_API_BASE_URL` to the HTTPS Function App origin, for example `https://<function-app-name>.azurewebsites.net`. Leave it empty for local Vite proxy development.
+
+The production workflow uses GitHub OIDC to deploy the dedicated Function App. Configure `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` as repository secrets, plus `AZURE_FUNCTIONAPP_NAME` and `VITE_API_BASE_URL` as repository variables. See [Local development and Azure setup](docs/local-azure-setup.md) for the Bicep outputs and scope.
 
 ## Build and test
 
