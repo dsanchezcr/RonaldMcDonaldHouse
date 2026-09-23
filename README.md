@@ -10,17 +10,17 @@ An anonymous, accessible eCard experience for the Americas SE&O & EPS GIVE Campa
 Browser (React + Canvas)
   ├─ approved catalog remains usable without AI
   ├─ POST /api/review-message ─┐
-  ├─ POST /api/generate-background ─ Azure Functions ─ Foundry/Content Safety (managed identity)
-  └─ POST /api/submit-card ───┘       └─ private Blob container (managed identity)
-Azure Static Web Apps ─ linked Standard API backend
+  ├─ POST /api/generate-background ─ Azure Functions ─ Foundry/Content Safety (server-side keys)
+  └─ POST /api/submit-card ───┘       └─ private Blob container (server-side storage key)
+Azure Static Web Apps ─ managed /api Functions
 Application Insights ─ privacy-safe operational telemetry; no request bodies
 ```
 
 - **Web:** React 19, TypeScript, Vite, semantic HTML, responsive CSS, Canvas JPG export.
 - **API:** Node 22 Azure Functions v4. The browser receives no Azure credentials.
 - **Storage:** private Blob container; server-generated paths; JPEG decode/re-encode strips metadata; distributed Blob idempotency markers.
-- **AI:** optional Foundry/Azure OpenAI endpoints authenticated with `DefaultAzureCredential`; fixed prompts and Azure AI Content Safety hooks.
-- **Infrastructure:** Bicep with managed identity/RBAC, configurable retention, linked API, HTTPS/TLS settings, and restricted CORS.
+- **AI:** optional Foundry/Azure OpenAI endpoints authenticated with server-side keys; fixed prompts and Azure AI Content Safety hooks.
+- **Infrastructure:** Bicep with server-side keys, configurable retention, linked API, HTTPS/TLS settings, and restricted CORS.
 - **Delivery:** GitHub Actions CI plus manually approved environment deployment using OIDC.
 
 ## UX and component hierarchy
@@ -52,18 +52,19 @@ All errors return a friendly `message` and never expose internal rules, model ou
 
 Prerequisites: Node.js 22, Azure Functions Core Tools v4, Azurite.
 
+For the complete Windows setup, Azure AI resource creation, key configuration, deployment, and verification workflow, see [Local development and Azure setup](docs/local-azure-setup.md).
+
 ```bash
 npm ci
 npm ci --prefix api
 cp .env.example .env.local
 cp api/local.settings.example.json api/local.settings.json
 azurite --silent --location .azurite
-# Create private `cards` container in Azurite, then:
 npm run start --prefix api
 npm run dev
 ```
 
-The production storage path uses managed identity. Azurite is a local-only exception; never copy emulator or production credentials into front-end variables.
+The production storage path uses a Function-only storage connection string. Azurite is a local-only exception; never copy emulator or production credentials into front-end variables.
 
 ## Build and test
 
@@ -78,7 +79,7 @@ Focused tests cover message/PII validation, character limits, RTL handling, non-
 
 ## Data flow and privacy
 
-Card composition remains in browser memory until submission. Review sends only message/language to the review endpoint; generation sends only the design prompt. Submission sends a re-rendered JPEG and allowlisted metadata. The Function validates request type/size, decodes and re-encodes the JPEG, generates its ID/path, and writes it with managed identity. No message, name, prompt, image, request body, direct URL, or raw IP is logged. Rate-limit keys are one-way daily hashes held only in function memory.
+Card composition remains in browser memory until submission. Review sends only message/language to the review endpoint; generation sends only the design prompt. Submission sends a re-rendered JPEG and allowlisted metadata. The Function validates request type/size, decodes and re-encodes the JPEG, generates its ID/path, and writes it with a server-side storage connection string. No message, name, prompt, image, request body, direct URL, raw IP, or service key is logged. Rate-limit keys are one-way daily hashes held only in function memory.
 
 ## Assumptions and owner approvals
 
@@ -86,7 +87,7 @@ Card composition remains in browser memory until submission. Review sends only m
 2. Brand/legal owners will approve footer text, catalog descriptions, writing guidance, event details, and whether religious statements are allowed.
 3. Privacy/security owners will approve retention days, telemetry retention/sampling, allowed origins, Front Door/WAF or equivalent edge abuse controls, and anonymous access.
 4. Responsible AI owners will approve model deployments, supported languages, safety thresholds, prompts, image-output moderation, retry limits, and whether image payloads may be returned to the browser.
-5. Azure owners will approve regions, resource names/SKUs, managed-identity role assignments, networking, and production monitoring.
+5. Azure owners will approve regions, resource names/SKUs, key storage/rotation, networking, and production monitoring.
 6. Event owners will confirm the consent version and the Giving Portal guidance.
 
 ## Readiness checklist

@@ -8,7 +8,7 @@ Assets are volunteer messages, generated/approved images, submitted cards, model
 
 | Threat | Controls | Residual action |
 |---|---|---|
-| Storage credential theft | No browser credential; managed identity; shared keys disabled; least-privilege Blob role | Review role assignments and network controls |
+| Storage credential theft | No browser credential; Function-only storage connection string; private container; HTTPS-only storage | Store secrets only in approved settings/Key Vault references; rotate keys; review operator access |
 | Path/container injection | Server-fixed container/path; UUID submission IDs; metadata allowlists | Pen-test encoded/multipart variants |
 | Malicious or polyglot upload | MIME/size/magic checks; Sharp decode with pixel limit; JPEG re-encode strips metadata | Keep Sharp patched; malware-test corpus |
 | Duplicate/replay | Client lock plus distributed hashed idempotency marker | Configure edge replay/abuse policy |
@@ -19,6 +19,7 @@ Assets are volunteer messages, generated/approved images, submitted cards, model
 | XSS/data exfiltration | React escaping, CSP, no third-party analytics, restrictive permissions/referrer policy | Validate deployed headers |
 | Telemetry privacy leakage | No request/body/name/message/prompt/image logging; IP masking | Audit App Insights and platform logs |
 | Supply-chain compromise | Lockfiles, CI, dependency/security review, environment approvals, OIDC | Enable Dependabot and branch protection |
+| Service key leakage | No keys in browser code, logs, docs, or telemetry; keys passed as secure deployment parameters or GitHub secrets | Rotate exposed keys immediately; prefer Key Vault references for production |
 
 ## Abuse cases
 

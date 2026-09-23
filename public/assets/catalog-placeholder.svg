@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Approved artwork placeholder</title>
-  <desc id="desc">A warm cream placeholder that must be replaced with approved event artwork.</desc>
-  <rect width="1600" height="900" fill="#fff6df"/>
-  <rect x="80" y="80" width="1440" height="740" rx="60" fill="#fffaf0" stroke="#b4232c" stroke-width="14" stroke-dasharray="30 24"/>
-  <text x="800" y="410" text-anchor="middle" font-family="Arial, sans-serif" font-size="62" font-weight="700" fill="#801820">Approved eCard artwork placeholder</text>
-  <text x="800" y="500" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" fill="#352b27">Replace before production — do not publish as an approved asset</text>
-</svg>

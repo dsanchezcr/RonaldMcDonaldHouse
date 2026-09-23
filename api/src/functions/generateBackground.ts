@@ -28,10 +28,9 @@ app.http('generate-background', {
       }
       const result = (await callJsonModel(endpoint, {
         prompt: `${description}\n\nRequired constraints:\n${constraints}`,
-        size: '1792x1024',
-        quality: 'standard',
+        size: '1536x1024',
+        quality: 'medium',
         n: 1,
-        response_format: 'b64_json',
       })) as { data?: Array<{ b64_json?: string; revised_prompt?: string }> }
       const image = result.data?.[0]?.b64_json
       if (!image || Buffer.byteLength(image, 'base64') > 8_000_000) throw new Error('ai-unavailable')

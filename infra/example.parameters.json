@@ -8,6 +8,9 @@
     "retentionDays": { "value": "REPLACE_WITH_EVENT_OWNER_APPROVED_RETENTION_DAYS" },
     "approvedFooterText": { "value": "REPLACE_WITH_EVENT_OWNER_APPROVED_LEGAL_TEXT" },
     "consentVersion": { "value": "2026-01" },
-    "blobPathPrefix": { "value": "2026/10/16/cards" }
+    "blobPathPrefix": { "value": "2026/10/16/cards" },
+    "aiApiKey": { "value": "REPLACE_WITH_AZURE_OPENAI_KEY_OR_EMPTY" },
+    "contentSafetyKey": { "value": "REPLACE_WITH_CONTENT_SAFETY_KEY_OR_EMPTY" },
+    "imageModerationKey": { "value": "REPLACE_WITH_IMAGE_MODERATION_KEY_OR_EMPTY" }
   }
 }

@@ -14,7 +14,7 @@
 ## Responsible AI checklist
 
 - [ ] AI is visibly labeled optional and the approved-template workflow works while disabled.
-- [ ] Managed identity authenticates all model/Content Safety calls; no browser model credential.
+- [ ] Server-side keys authenticate all model/Content Safety calls; no browser model credential; keys are stored only in approved app settings, GitHub secrets, or Key Vault references and rotated.
 - [ ] Approved models, deployments, regions, languages, prompts, thresholds, and evaluation sets are documented.
 - [ ] Text input is checked for PII, medical content, outcome promises, solicitation, harassment, hate, sexual, violence, self-harm, discrimination, and injection.
 - [ ] Suggestions preserve meaning/language, make minimal edits, explain concerns, and require explicit acceptance.

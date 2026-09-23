@@ -6,7 +6,7 @@
 2. Configure environment variables documented in `.env.example`, `api/local.settings.example.json`, and `infra/main.bicep`. Never store values in source.
 3. Use workload identity federation for Azure login. Grant the deployment identity only required resource-group roles.
 4. Run CI, deploy development, execute manual accessibility/security/failure tests, then promote the same commit through test and production approvals.
-5. Verify health, restrictive headers/CORS, private container access, managed-identity upload, lifecycle policy, telemetry redaction, and the exact Giving Portal URL.
+5. Verify health, restrictive headers/CORS, private container access, server-side key upload, lifecycle policy, telemetry redaction, and the exact Giving Portal URL.
 
 ## Monitoring
 
@@ -26,4 +26,4 @@ Disable AI independently with flags/endpoints. For upload abuse or privacy risk,
 
 ## Storage outage
 
-The browser retains the generated Blob for download and retry during the active page session. Tell users to download first; never claim submission succeeded without a server response. Restore service, verify health and Blob RBAC, then retry with the same idempotency key.
+The browser retains the generated Blob for download and retry during the active page session. Tell users to download first; never claim submission succeeded without a server response. Restore service, verify health and Blob key access, then retry with the same idempotency key.

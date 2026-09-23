@@ -22,17 +22,29 @@ param aiReviewEnabled bool = false
 @description('Enable optional AI image generation.')
 param aiImageEnabled bool = false
 
-@description('Full managed-identity-enabled Foundry/Azure OpenAI review endpoint.')
+@description('Full Azure OpenAI review endpoint.')
 param aiReviewEndpoint string = ''
 
-@description('Full managed-identity-enabled image generation endpoint.')
+@description('Full Azure OpenAI image generation endpoint.')
 param aiImageEndpoint string = ''
+
+@secure()
+@description('Azure OpenAI or Azure AI Services key used by the Function App for review and image-generation calls.')
+param aiApiKey string = ''
 
 @description('Azure AI Content Safety resource endpoint.')
 param contentSafetyEndpoint string = ''
 
-@description('Approved managed-identity image moderation endpoint.')
+@secure()
+@description('Azure AI Content Safety key used by the Function App.')
+param contentSafetyKey string = ''
+
+@description('Approved image moderation endpoint.')
 param imageModerationEndpoint string = ''
+
+@secure()
+@description('Image moderation API key used by the Function App.')
+param imageModerationKey string = ''
 
 @description('Event-owner approved legal footer.')
 param approvedFooterText string
@@ -51,7 +63,6 @@ param aiImageDeploymentName string = ''
 
 var suffix = uniqueString(resourceGroup().id, environment)
 var storageName = take('rmhecard${environment}${suffix}', 24)
-var functionName = 'rmh-ecard-${environment}-${suffix}'
 var containerName = 'cards'
 
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -88,19 +99,13 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   kind: 'StorageV2'
   properties: {
     allowBlobPublicAccess: false
-    allowSharedKeyAccess: false
-    defaultToOAuthAuthentication: true
+    allowSharedKeyAccess: true
+    defaultToOAuthAuthentication: false
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     networkAcls: {
       bypass: 'AzureServices'
-      defaultAction: 'Deny'
-      resourceAccessRules: [
-        {
-          resourceId: resourceId('Microsoft.Web/sites', functionName)
-          tenantId: subscription().tenantId
-        }
-      ]
+      defaultAction: 'Allow'
     }
   }
 }
@@ -160,91 +165,14 @@ resource retention 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05
   }
 }
 
-resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: 'rmh-ecard-${environment}-plan'
-  location: location
-  sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
-  }
-  kind: 'functionapp'
-  properties: {
-    reserved: true
-  }
-}
-
-resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
-  name: functionName
-  location: location
-  kind: 'functionapp,linux'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    serverFarmId: plan.id
-    httpsOnly: true
-    siteConfig: {
-      linuxFxVersion: 'Node|22'
-      minTlsVersion: '1.2'
-      ftpsState: 'Disabled'
-      http20Enabled: true
-      cors: {
-        allowedOrigins: allowedOrigins
-        supportCredentials: false
-      }
-      appSettings: [
-        { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
-        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' }
-        { name: 'AzureWebJobsStorage__accountName', value: storage.name }
-        { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
-        { name: 'STORAGE_ACCOUNT_URL', value: storage.properties.primaryEndpoints.blob }
-        { name: 'STORAGE_CONTAINER', value: containerName }
-        { name: 'BLOB_PATH_PREFIX', value: blobPathPrefix }
-        { name: 'ALLOWED_ORIGINS', value: join(allowedOrigins, ',') }
-        { name: 'CONSENT_VERSION', value: consentVersion }
-        { name: 'MAX_UPLOAD_BYTES', value: '5000000' }
-        { name: 'IDEMPOTENCY_PENDING_SECONDS', value: '300' }
-        { name: 'SUPPORTED_LANGUAGES', value: 'en,es,fr,pt,ar,he' }
-        { name: 'AI_REVIEW_ENABLED', value: string(aiReviewEnabled) }
-        { name: 'AI_IMAGE_ENABLED', value: string(aiImageEnabled) }
-        { name: 'AI_REVIEW_ENDPOINT', value: aiReviewEndpoint }
-        { name: 'AI_IMAGE_ENDPOINT', value: aiImageEndpoint }
-        { name: 'AI_REVIEW_DEPLOYMENT_NAME', value: aiReviewDeploymentName }
-        { name: 'AI_IMAGE_DEPLOYMENT_NAME', value: aiImageDeploymentName }
-        { name: 'CONTENT_SAFETY_ENDPOINT', value: contentSafetyEndpoint }
-        { name: 'IMAGE_MODERATION_ENDPOINT', value: imageModerationEndpoint }
-        { name: 'CONTENT_SAFETY_THRESHOLD', value: '2' }
-        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: insights.properties.ConnectionString }
-        { name: 'TELEMETRY_ENABLED', value: 'true' }
-      ]
-    }
-  }
-}
-
-resource blobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id, functionApp.id, 'blob-data-contributor')
-  scope: storage
-  properties: {
-    principalId: functionApp.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
-  }
-}
+var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
 
 resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
   name: staticWebAppName
   location: location
   sku: {
-    name: environment == 'prod' ? 'Standard' : 'Free'
-    tier: environment == 'prod' ? 'Standard' : 'Free'
-  }
-
-  resource linkedApi 'linkedBackends@2023-12-01' = {
-    name: 'function-api'
-    properties: {
-      backendResourceId: functionApp.id
-      region: location
-    }
+    name: 'Standard'
+    tier: 'Standard'
   }
   properties: {
     allowConfigFileUpdates: true
@@ -252,7 +180,38 @@ resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
   }
 }
 
-output functionAppName string = functionApp.name
+resource staticWebAppSettings 'Microsoft.Web/staticSites/config@2023-12-01' = {
+  parent: staticWebApp
+  name: 'appsettings'
+  properties: {
+    FUNCTIONS_EXTENSION_VERSION: '~4'
+    FUNCTIONS_WORKER_RUNTIME: 'node'
+    AzureWebJobsStorage: storageConnectionString
+    STORAGE_CONNECTION_STRING: storageConnectionString
+    STORAGE_CONTAINER: containerName
+    BLOB_PATH_PREFIX: blobPathPrefix
+    ALLOWED_ORIGINS: join(allowedOrigins, ',')
+    CONSENT_VERSION: consentVersion
+    MAX_UPLOAD_BYTES: '5000000'
+    IDEMPOTENCY_PENDING_SECONDS: '300'
+    SUPPORTED_LANGUAGES: 'en,es,fr,pt,ar,he'
+    AI_REVIEW_ENABLED: string(aiReviewEnabled)
+    AI_IMAGE_ENABLED: string(aiImageEnabled)
+    AI_REVIEW_ENDPOINT: aiReviewEndpoint
+    AI_IMAGE_ENDPOINT: aiImageEndpoint
+    AI_API_KEY: aiApiKey
+    AI_REVIEW_DEPLOYMENT_NAME: aiReviewDeploymentName
+    AI_IMAGE_DEPLOYMENT_NAME: aiImageDeploymentName
+    CONTENT_SAFETY_ENDPOINT: contentSafetyEndpoint
+    CONTENT_SAFETY_KEY: contentSafetyKey
+    IMAGE_MODERATION_ENDPOINT: imageModerationEndpoint
+    IMAGE_MODERATION_KEY: imageModerationKey
+    CONTENT_SAFETY_THRESHOLD: '2'
+    APPLICATIONINSIGHTS_CONNECTION_STRING: insights.properties.ConnectionString
+    TELEMETRY_ENABLED: 'true'
+  }
+}
+
 output staticWebAppHostname string = staticWebApp.properties.defaultHostname
 output staticWebAppResourceName string = staticWebApp.name
 output storageAccountName string = storage.name

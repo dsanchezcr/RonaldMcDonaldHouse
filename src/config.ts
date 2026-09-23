@@ -1,7 +1,5 @@
 import type { CardDesign } from './types'
 
-const placeholder = '/assets/catalog-placeholder.svg'
-
 export const config = {
   eventTitle: import.meta.env.VITE_EVENT_TITLE || 'Americas SE&O & EPS GIVE Campaign 2026',
   eventDate: import.meta.env.VITE_EVENT_DATE || 'October 16, 2026',
@@ -20,12 +18,7 @@ export const config = {
 }
 
 export const languages = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'pt', label: 'Português' },
-  { code: 'ar', label: 'العربية' },
-  { code: 'he', label: 'עברית' },
+  { code: 'en', label: 'English' }
 ] as const
 
 export const designs: CardDesign[] = [
@@ -39,7 +32,7 @@ export const designs: CardDesign[] = [
   id,
   title,
   description,
-  image: placeholder,
+  image: `/assets/templates/${id}.jpg`,
   source: 'approved-catalog' as const,
   textColor: '#3a2a23',
   panelColor: 'rgba(255, 250, 239, 0.9)',

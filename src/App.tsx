@@ -14,7 +14,7 @@ const starterPhrases = [
 ]
 
 function App() {
-  const [design, setDesign] = useState<CardDesign>(designs[0])
+  const [design, setDesign] = useState<CardDesign | null>(null)
   const [message, setMessage] = useState('')
   const [firstName, setFirstName] = useState('')
   const [language, setLanguage] = useState('en')
@@ -22,7 +22,7 @@ function App() {
   const [textAlign, setTextAlign] = useState<TextAlign>('center')
   const [consents, setConsents] = useState([false, false, false, false])
   const [status, setStatus] = useState('')
-  const [busy, setBusy] = useState<'review' | 'generate' | 'submit' | null>(null)
+  const [busy, setBusy] = useState<'review' | 'background' | 'generate' | 'submit' | null>(null)
   const [review, setReview] = useState<ReviewResponse | null>(null)
   const [aiPrompt, setAiPrompt] = useState('')
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
@@ -33,14 +33,16 @@ function App() {
   const concerns = useMemo(() => validateMessage(message, config.maxMessageLength), [message])
   const firstNameError = validateFirstName(firstName)
   const state = useMemo(
-    () => ({ design, message, firstName, language, textAlign, fontSize }),
+    () => design ? { design, message, firstName, language, textAlign, fontSize } : null,
     [design, message, firstName, language, textAlign, fontSize],
   )
   const valid = concerns.length === 0 && !firstNameError
+  const finalChecksComplete = consents.every(Boolean)
+  const readyForFinalActions = Boolean(state) && valid && finalChecksComplete && busy === null
 
   useEffect(() => {
     let active = true
-    if (!state.message.trim()) return
+    if (!state?.message.trim()) return
     renderCard(state)
       .then((canvas) => {
         if (!active || !canvasRef.current) return
@@ -54,6 +56,10 @@ function App() {
 
   async function generateJpg() {
     setError('')
+    if (!state) {
+      setError('Choose a design or generate a background before creating your JPG.')
+      return null
+    }
     setBusy('generate')
     try {
       const blob = await cardToBlob(state)
@@ -93,8 +99,9 @@ function App() {
   }
 
   async function requestBackground() {
-    setBusy('generate')
+    setBusy('background')
     setError('')
+    setStatus('Image being generated. This can take a moment.')
     try {
       const result = await generateBackground(aiPrompt, language)
       setDesign({
@@ -116,6 +123,10 @@ function App() {
   }
 
   async function upload() {
+    if (!state) {
+      setError('Choose a design or generate a background before submitting.')
+      return
+    }
     if (!valid || !consents.every(Boolean)) {
       setError('Resolve message concerns and complete every final check before submitting.')
       return
@@ -129,7 +140,7 @@ function App() {
       const saved = JSON.parse(sessionStorage.getItem('rmh-idempotency') || '{}') as { fingerprint?: string; key?: string }
       const key = saved.fingerprint === fingerprint && saved.key ? saved.key : crypto.randomUUID()
       sessionStorage.setItem('rmh-idempotency', JSON.stringify({ fingerprint, key }))
-      const result = await submitCard(blob, language, design.source, config.consentVersion, key)
+      const result = await submitCard(blob, language, state.design.source, config.consentVersion, key)
       setSubmission(result)
       setStatus('Card submission succeeded.')
       sessionStorage.removeItem('rmh-idempotency')
@@ -144,9 +155,10 @@ function App() {
     <>
       <a className="skip-link" href="#main">Skip to card creator</a>
       <header className="site-header">
-        <div className="brand-placeholder" role="img" aria-label="Approved Ronald McDonald House logo pending replacement">Approved event logo</div>
+        <img src="/assets/Ronald_McDonald_House_Logo.svg" alt="Ronald McDonald House" className="brand-logo" />
         <span>{config.eventTitle}</span>
       </header>
+      {error && <div className="floating-alert" role="alert">{error}</div>}
       <main id="main">
         <section className="hero" aria-labelledby="hero-title">
           <p className="eyebrow">{config.eventDate} · 11:05–11:30 AM Pacific Time</p>
@@ -171,16 +183,15 @@ function App() {
 
         <section id="designs" className="section" aria-labelledby="design-title">
           <p className="step-label">Step 1</p>
-          <h2 id="design-title">Choose a design</h2>
-          <p className="approval-warning" role="note">Catalog artwork is a clearly marked placeholder. Event owners must replace it with approved exports from the source presentation before production.</p>
+          <h2 id="design-title">Select a design or generate one with Microsoft AI</h2>
           <div className="design-grid" role="radiogroup" aria-label="Card designs">
             {designs.map((item) => (
-              <article className={`design-card ${design.id === item.id ? 'selected' : ''}`} key={item.id}>
+              <article className={`design-card ${design?.id === item.id ? 'selected' : ''}`} key={item.id}>
                 <img src={item.image} alt={item.description} loading="lazy" />
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>
-                <button type="button" role="radio" aria-checked={design.id === item.id} onClick={() => { setDesign(item); setImageBlob(null) }}>
-                  {design.id === item.id ? 'Selected' : 'Use this design'}
+                <button type="button" role="radio" aria-checked={design?.id === item.id} onClick={() => { setDesign(item); setImageBlob(null) }}>
+                  {design?.id === item.id ? 'Selected' : 'Use this design'}
                 </button>
               </article>
             ))}
@@ -190,8 +201,9 @@ function App() {
             <p>AI generation is a progressive enhancement. The approved catalog remains available if the service is unavailable.</p>
             <label htmlFor="ai-prompt">Describe a warm, family-friendly background</label>
             <textarea id="ai-prompt" value={aiPrompt} maxLength={300} disabled={!config.aiImageEnabled} onChange={(event) => setAiPrompt(event.target.value)} placeholder="Warm sunshine and small hearts" />
+            <p className="field-help">Do not include names, contact details, medical information, or other personal data in the AI background prompt.</p>
             <button type="button" disabled={!config.aiImageEnabled || aiPrompt.trim().length < 3 || busy !== null} onClick={requestBackground}>
-              {busy === 'generate' ? 'Generating…' : config.aiImageEnabled ? 'Generate background' : 'AI image generation is not enabled'}
+              {busy === 'background' ? 'Generating…' : config.aiImageEnabled ? 'Generate background' : 'AI image generation is not enabled'}
             </button>
           </details>
         </section>
@@ -200,7 +212,7 @@ function App() {
           <div>
             <p className="step-label">Step 2</p>
             <h2 id="message-title">Write your message</h2>
-            <p>Write a message of encouragement and hope. Messages in languages other than English are welcome.</p>
+            <p>Write a message of encouragement and hope.</p>
             <label htmlFor="language">Message language</label>
             <select id="language" value={language} onChange={(event) => setLanguage(event.target.value)}>
               {languages.map((item) => <option value={item.code} key={item.code}>{item.label}</option>)}
@@ -235,7 +247,11 @@ function App() {
           </div>
           <div className="preview-column">
             <h2>Live preview</h2>
-            <canvas ref={canvasRef} width="800" height="450" role="img" aria-label={`${design.title}. Message: ${message || 'No message entered yet'}`} />
+            <div className="preview-frame">
+              <canvas ref={canvasRef} width="800" height="450" role="img" aria-label={`${design?.title || 'No design selected yet'}. Message: ${message || 'No message entered yet'}`} />
+              {busy === 'background' && <div className="preview-overlay" role="status">Image Being Generated</div>}
+              {!design && busy !== 'background' && <div className="preview-overlay muted" role="status">Select a design or generate a background to preview your card.</div>}
+            </div>
             <div className="preview-controls">
               <label htmlFor="font-size">Text size</label>
               <input id="font-size" type="range" min="38" max="68" value={fontSize} onChange={(event) => { setFontSize(Number(event.target.value)); setImageBlob(null) }} />
@@ -283,12 +299,11 @@ function App() {
             </label>
           ))}
           <div className="actions">
-            <button type="button" className="primary" disabled={!valid || busy !== null} onClick={generateJpg}>{busy === 'generate' ? 'Generating…' : 'Generate JPG'}</button>
-            <button type="button" disabled={!imageBlob} onClick={download}>Download JPG</button>
-            <button type="button" disabled={!valid || !consents.every(Boolean) || busy !== null} onClick={upload}>{busy === 'submit' ? 'Submitting…' : 'Submit card'}</button>
+            <button type="button" className="primary" disabled={!readyForFinalActions} onClick={generateJpg}>{busy === 'generate' ? 'Generating…' : 'Generate JPG'}</button>
+            <button type="button" disabled={!readyForFinalActions} onClick={download}>Download JPG</button>
+            <button type="button" disabled={!readyForFinalActions} onClick={upload}>{busy === 'submit' ? 'Submitting…' : 'Submit card'}</button>
           </div>
           <div className="status" aria-live="polite">{status}</div>
-          {error && <div className="error-banner" role="alert">{error}</div>}
         </section>
 
         {submission && (
@@ -298,7 +313,7 @@ function App() {
             <p>Submission reference: <strong>{submission.submissionId}</strong></p>
             <div className="actions">
               <button type="button" onClick={download}>Download JPG</button>
-              <button type="button" onClick={() => { setSubmission(null); setMessage(''); setFirstName(''); setConsents([false, false, false, false]); setImageBlob(null) }}>Create another card</button>
+              <button type="button" onClick={() => { setSubmission(null); setMessage(''); setFirstName(''); setConsents([false, false, false, false]); setImageBlob(null); setDesign(null) }}>Create another card</button>
             </div>
           </section>
         )}

@@ -1,4 +1,3 @@
-import { DefaultAzureCredential } from '@azure/identity'
 import { BlobServiceClient, type ContainerClient } from '@azure/storage-blob'
 import { createHash, randomUUID } from 'node:crypto'
 import sharp from 'sharp'
@@ -10,10 +9,11 @@ export interface StoredSubmission {
 }
 
 function containerClient(): ContainerClient {
-  const accountUrl = process.env.STORAGE_ACCOUNT_URL
   const containerName = process.env.STORAGE_CONTAINER
-  if (!accountUrl || !containerName) throw new Error('storage-unavailable')
-  return new BlobServiceClient(accountUrl, new DefaultAzureCredential()).getContainerClient(containerName)
+  const connectionString = process.env.STORAGE_CONNECTION_STRING || process.env.AzureWebJobsStorage
+  if (!connectionString || !containerName) throw new Error('storage-unavailable')
+  const service = BlobServiceClient.fromConnectionString(connectionString)
+  return service.getContainerClient(containerName)
 }
 
 export async function sanitizeJpeg(bytes: Buffer, maxBytes = Number(process.env.MAX_UPLOAD_BYTES || 5_000_000)): Promise<Buffer> {
@@ -41,6 +41,7 @@ export async function storeSubmission(
 ): Promise<StoredSubmission> {
   if (!/^[a-zA-Z0-9-]{16,100}$/u.test(idempotencyKey)) throw new Error('invalid-idempotency-key')
   const container = containerClient()
+  if (process.env.AZURE_FUNCTIONS_ENVIRONMENT === 'Development') await container.createIfNotExists()
   const hash = createHash('sha256').update(idempotencyKey).digest('hex')
   const marker = container.getBlockBlobClient(`idempotency/${hash}.json`)
   try {

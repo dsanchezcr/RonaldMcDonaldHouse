@@ -18,7 +18,9 @@ a { color: var(--red-dark); }
 .skip-link { position: absolute; left: .5rem; top: -5rem; z-index: 10; padding: .7rem; background: white; }
 .skip-link:focus { top: .5rem; }
 .site-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem max(1rem, calc((100% - 1180px) / 2)); background: white; border-bottom: 1px solid var(--border); font-weight: 700; }
+.brand-logo { display: block; width: 80px; height: auto; flex: 0 0 auto; }
 .brand-placeholder { display: grid; place-items: center; width: 150px; min-height: 56px; border: 2px dashed var(--red); border-radius: .5rem; padding: .35rem; color: var(--red-dark); font-size: .8rem; text-align: center; }
+.floating-alert { position: fixed; right: 1rem; bottom: 1rem; z-index: 20; width: min(420px, calc(100% - 2rem)); padding: 1rem 1.2rem; border: 2px solid #8b111c; border-left-width: 8px; border-radius: .75rem; color: #8b111c; background: white; box-shadow: 0 10px 30px #3b302c33; font-weight: 800; }
 main { overflow: hidden; }
 .hero, .section { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; }
 .hero { padding: clamp(3rem, 9vw, 7rem) 0; max-width: 900px; text-align: center; }
@@ -49,7 +51,10 @@ input:not([type="checkbox"], [type="range"]), select, textarea { width: 100%; mi
 textarea { min-height: 150px; resize: vertical; }
 .composer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr); gap: 3rem; align-items: start; }
 .preview-column { position: sticky; top: 1rem; }
+.preview-frame { position: relative; }
 canvas { width: 100%; height: auto; background: #eee; border: 2px solid var(--border); border-radius: 1rem; }
+.preview-overlay { position: absolute; inset: 2px; display: grid; place-items: center; padding: 1rem; border-radius: 1rem; background: rgba(255, 250, 239, .94); color: var(--red-dark); text-align: center; font-size: 1.2rem; font-weight: 800; }
+.preview-overlay.muted { color: #5c504a; font-size: 1rem; }
 .field-help { color: #5c504a; font-size: .9rem; }
 .errors, .error-banner { color: #8b111c; font-weight: 700; }
 .error-banner { margin-top: 1rem; padding: 1rem; border: 2px solid #8b111c; background: #fff; }
