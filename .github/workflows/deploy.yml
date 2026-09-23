@@ -1,20 +1,17 @@
 name: Deploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        type: choice
-        options: [development, test, production]
-        required: true
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
 
 permissions:
   contents: read
-  id-token: write
+  pull-requests: write
 
 jobs:
-  deploy:
-    environment: ${{ inputs.environment }}
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
@@ -28,89 +25,78 @@ jobs:
       - name: Install dependencies
         run: npm ci && npm ci --prefix api
       - name: Validate and build
+        run: npm run check && npm run check:api
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+      - name: Install dependencies
+        run: npm ci && npm ci --prefix api
+      - name: Build production artifacts
         env:
           VITE_AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
           VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
           VITE_CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
           VITE_APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
-        run: npm run check && npm run check:api
-      - uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Generate deployment parameters
-        shell: pwsh
-        env:
-          DEPLOYMENT_ENVIRONMENT: ${{ vars.DEPLOYMENT_ENVIRONMENT }}
-          STATIC_WEB_APP_NAME: ${{ vars.STATIC_WEB_APP_NAME }}
-          ALLOWED_ORIGINS_JSON: ${{ vars.ALLOWED_ORIGINS_JSON }}
-          RETENTION_DAYS: ${{ vars.RETENTION_DAYS }}
-          CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
-          BLOB_PATH_PREFIX: ${{ vars.BLOB_PATH_PREFIX }}
-          APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
-          AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
-          AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
-          AI_REVIEW_ENDPOINT: ${{ vars.AI_REVIEW_ENDPOINT }}
-          AI_IMAGE_ENDPOINT: ${{ vars.AI_IMAGE_ENDPOINT }}
-          AI_REVIEW_DEPLOYMENT_NAME: ${{ vars.AI_REVIEW_DEPLOYMENT_NAME }}
-          AI_IMAGE_DEPLOYMENT_NAME: ${{ vars.AI_IMAGE_DEPLOYMENT_NAME }}
-          CONTENT_SAFETY_ENDPOINT: ${{ vars.CONTENT_SAFETY_ENDPOINT }}
-          IMAGE_MODERATION_ENDPOINT: ${{ vars.IMAGE_MODERATION_ENDPOINT }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          CONTENT_SAFETY_KEY: ${{ secrets.CONTENT_SAFETY_KEY }}
-          IMAGE_MODERATION_KEY: ${{ secrets.IMAGE_MODERATION_KEY }}
-        run: |
-          $allowedOrigins = @()
-          if (-not [string]::IsNullOrWhiteSpace($env:ALLOWED_ORIGINS_JSON)) {
-            $allowedOrigins = $env:ALLOWED_ORIGINS_JSON | ConvertFrom-Json
-            if ($null -eq $allowedOrigins) { $allowedOrigins = @() }
-            elseif ($allowedOrigins -isnot [array]) { $allowedOrigins = @($allowedOrigins) }
-          }
-
-          @{
-            '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'
-            contentVersion = '1.0.0.0'
-            parameters = @{
-              environment = @{ value = $env:DEPLOYMENT_ENVIRONMENT }
-              staticWebAppName = @{ value = $env:STATIC_WEB_APP_NAME }
-              allowedOrigins = @{ value = $allowedOrigins }
-              retentionDays = @{ value = [int]$env:RETENTION_DAYS }
-              approvedFooterText = @{ value = $env:APPROVED_FOOTER_TEXT }
-              consentVersion = @{ value = $env:CONSENT_VERSION }
-              blobPathPrefix = @{ value = $env:BLOB_PATH_PREFIX }
-              aiReviewEnabled = @{ value = $env:AI_REVIEW_ENABLED -eq 'true' }
-              aiImageEnabled = @{ value = $env:AI_IMAGE_ENABLED -eq 'true' }
-              aiReviewEndpoint = @{ value = $env:AI_REVIEW_ENDPOINT }
-              aiImageEndpoint = @{ value = $env:AI_IMAGE_ENDPOINT }
-              aiApiKey = @{ value = $env:AI_API_KEY }
-              contentSafetyEndpoint = @{ value = $env:CONTENT_SAFETY_ENDPOINT }
-              contentSafetyKey = @{ value = $env:CONTENT_SAFETY_KEY }
-              imageModerationEndpoint = @{ value = $env:IMAGE_MODERATION_ENDPOINT }
-              imageModerationKey = @{ value = $env:IMAGE_MODERATION_KEY }
-              aiReviewDeploymentName = @{ value = $env:AI_REVIEW_DEPLOYMENT_NAME }
-              aiImageDeploymentName = @{ value = $env:AI_IMAGE_DEPLOYMENT_NAME }
-            }
-          } | ConvertTo-Json -Depth 10 | Set-Content infra/deploy.parameters.json
-      - name: Validate infrastructure
-        run: |
-          az bicep build --file infra/main.bicep
-          az deployment group validate \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file infra/main.bicep \
-            --parameters '@infra/deploy.parameters.json'
-      - uses: azure/arm-deploy@v2.0.0
-        with:
-          scope: resourcegroup
-          resourceGroupName: ${{ vars.AZURE_RESOURCE_GROUP }}
-          template: infra/main.bicep
-          parameters: '@infra/deploy.parameters.json'
-          failOnStdErr: true
+        run: npm run build && npm run build --prefix api
       - uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           action: upload
-          app_location: /
+          app_location: dist
           api_location: api
-          output_location: dist
           skip_app_build: true
+          skip_api_build: true
+
+  deploy-preview:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+      - name: Install dependencies
+        run: npm ci && npm ci --prefix api
+      - name: Build staging artifacts
+        env:
+          VITE_AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
+          VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
+          VITE_CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
+          VITE_APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
+        run: npm run build && npm run build --prefix api
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: dist
+          api_location: api
+          skip_app_build: true
+          skip_api_build: true
+
+  close-preview:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
+          action: close
+          app_location: dist

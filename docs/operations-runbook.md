@@ -2,11 +2,11 @@
 
 ## Deploy
 
-1. Approve all readiness items and create separate development, test, and production GitHub environments.
-2. Configure environment variables documented in `.env.example`, `api/local.settings.example.json`, and `infra/main.bicep`. Never store values in source.
-3. Use workload identity federation for Azure login. Grant the deployment identity only required resource-group roles.
-4. Run CI, deploy development, execute manual accessibility/security/failure tests, then promote the same commit through test and production approvals.
-5. Verify health, restrictive headers/CORS, private container access, server-side key upload, lifecycle policy, telemetry redaction, and the exact Giving Portal URL.
+1. Approve all readiness items and configure GitHub `production` and optional `staging` environments.
+2. Configure variables and secrets documented in `.env.example`, `api/local.settings.example.json`, and `infra/main.bicep`. Never store values in source.
+3. Provision or update Azure resources through reviewed Bicep only when infrastructure changes are required.
+4. For app-only changes, let GitHub Actions build/test first, deploy production from `main`, and deploy pull request previews for review.
+5. Verify health, restrictive headers/CORS, private container access, server-side key upload, lifecycle policy, telemetry redaction, AI review/generation behavior, moderation failures, and the exact Giving Portal URL.
 
 ## Monitoring
 

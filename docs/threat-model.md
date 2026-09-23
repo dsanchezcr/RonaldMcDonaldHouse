@@ -15,10 +15,10 @@ Assets are volunteer messages, generated/approved images, submitted cards, model
 | DoS/cost abuse | Request/body/pixel limits, concurrency limits, per-instance rate limit, AI regeneration limit | Production WAF/Front Door rate limiting required |
 | PII/medical/unsafe content | Client UX checks repeated server-side; Content Safety hook; no body logging | Human review/incident process; tune multilingual rules |
 | Prompt injection/model leakage | Fixed system instructions, allowlisted action/schema, output projection, no raw internals | Red-team configured deployments |
-| Unsafe generated image | Fixed constraints and prompt moderation | Approved image-output moderation is a go-live blocker |
+| Unsafe generated image | Fixed constraints, prompt moderation, `/api/moderate-image`, Azure AI Content Safety image analysis | Add any additional approved logo/person/medical-imagery checks required before production |
 | XSS/data exfiltration | React escaping, CSP, no third-party analytics, restrictive permissions/referrer policy | Validate deployed headers |
 | Telemetry privacy leakage | No request/body/name/message/prompt/image logging; IP masking | Audit App Insights and platform logs |
-| Supply-chain compromise | Lockfiles, CI, dependency/security review, environment approvals, OIDC | Enable Dependabot and branch protection |
+| Supply-chain compromise | Lockfiles, CI, dependency/security review, environment approvals, least-privilege deployment tokens | Enable Dependabot and branch protection |
 | Service key leakage | No keys in browser code, logs, docs, or telemetry; keys passed as secure deployment parameters or GitHub secrets | Rotate exposed keys immediately; prefer Key Vault references for production |
 
 ## Abuse cases

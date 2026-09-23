@@ -19,7 +19,7 @@
 - [ ] Text input is checked for PII, medical content, outcome promises, solicitation, harassment, hate, sexual, violence, self-harm, discrimination, and injection.
 - [ ] Suggestions preserve meaning/language, make minimal edits, explain concerns, and require explicit acceptance.
 - [ ] Unsupported multilingual review is transparently unavailable, never presented as completed.
-- [ ] Image prompts receive fixed constraints; prompt and image moderation reject text, logos, characters, identifiable people, and distressing/medical imagery.
+- [ ] Image prompts receive fixed constraints; prompt and image moderation reject harmful images and any additional text, logo, character, identifiable-person, and medical-imagery checks required by the approved review.
 - [ ] Generation attempts and cost are limited; blocked/unavailable messages are nonjudgmental.
 - [ ] Model output is parsed through an allowlisted contract; raw safety internals/system prompts are not returned.
 - [ ] Human review is required for revised text, generated image, final card, and submission.
