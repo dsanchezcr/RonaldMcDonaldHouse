@@ -1,7 +1,7 @@
 import type { CardDesign } from './types'
 
 export const config = {
-  eventTitle: import.meta.env.VITE_EVENT_TITLE || 'Americas SE&O & EPS GIVE Campaign 2026',
+  eventTitle: import.meta.env.VITE_EVENT_TITLE || 'Americas SE&O & EPS Give Campaign 2026',
   eventDate: import.meta.env.VITE_EVENT_DATE || 'October 16, 2026',
   eventDuration: import.meta.env.VITE_EVENT_DURATION || 'approximately 25 minutes',
   activityName: import.meta.env.VITE_ACTIVITY_NAME || 'Words of Encouragement',
@@ -14,7 +14,7 @@ export const config = {
   aiImageEnabled: import.meta.env.VITE_AI_IMAGE_ENABLED === 'true',
   footerText:
     import.meta.env.VITE_APPROVED_FOOTER_TEXT ||
-    'Created for the Americas SE&O & EPS GIVE Campaign 2026 volunteer activity. Approved legal wording is pending event-owner review.',
+    'Created for the Americas SE&O & EPS Give Campaign 2026 volunteer activity. Approved legal wording is pending event-owner review.',
 }
 
 export const languages = [

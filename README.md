@@ -1,6 +1,6 @@
 # Words of Encouragement eCard
 
-An anonymous, accessible eCard experience for the Americas SE&O & EPS GIVE Campaign 2026. Volunteers select approved artwork or optionally generate a background with Microsoft AI, write and optionally AI-review a supportive message, render a 1600×900 JPG locally, submit it through a dedicated Azure Function App API, and then open the Microsoft Giving Portal.
+An anonymous, accessible eCard experience for the Americas SE&O & EPS Give Campaign 2026. Volunteers select approved artwork or optionally generate a background with Microsoft AI, write and optionally AI-review a supportive message, render a 1600×900 JPG locally, submit it through a dedicated Azure Function App API, and then open the Microsoft Giving Portal.
 
 ## Architecture
 
