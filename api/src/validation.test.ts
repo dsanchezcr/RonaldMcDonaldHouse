@@ -8,6 +8,12 @@ describe('API validation', () => {
       language: 'en',
       action: 'review',
     })
+
+  })
+
+  it.each(['en', 'es', 'fr', 'pt-BR', 'it', 'ja', 'zh-CN', 'ko', 'nl', 'de', 'pt', 'ar', 'he'])('accepts %s for review and submission', (language) => {
+    expect(validateReviewInput({ message: 'Sending caring thoughts your way.', language }).language).toBe(language)
+    expect(validateSubmissionMetadata(language, 'approved-catalog', '2026-01').languageCode).toBe(language)
   })
 
   it('blocks contact details, medical advice, promises, and prompt injection', () => {

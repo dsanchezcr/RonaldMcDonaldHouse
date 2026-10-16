@@ -9,6 +9,7 @@ export interface CardDesign {
   source: DesignSource
   textColor: string
   panelColor: string
+  embeddedEnglish?: boolean
 }
 
 export interface ReviewResponse {

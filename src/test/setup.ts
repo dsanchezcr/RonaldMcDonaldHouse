@@ -6,6 +6,7 @@ afterEach(() => cleanup())
 
 HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   drawImage: vi.fn(),
+  clearRect: vi.fn(),
   fillRect: vi.fn(),
   fillText: vi.fn(),
   measureText: (value: string) => ({ width: value.length * 10 }),

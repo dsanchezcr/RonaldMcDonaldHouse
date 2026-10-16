@@ -12,8 +12,10 @@ param staticWebAppName string
 @description('Globally unique dedicated Function App name.')
 param functionAppName string = '${take(staticWebAppName, 50)}-api'
 
-@description('GitHub repository trusted to deploy the production Function App through OIDC.')
-param githubRepository string = 'dsanchezcr/RonaldMcDonaldHouse'
+@minLength(3)
+@maxLength(200)
+@description('Explicit owner/repository trusted to deploy through the protected GitHub production environment. No URL, wildcard, or branch suffix.')
+param githubRepository string
 
 @description('Allowed browser origins. Do not use wildcards in production.')
 param allowedOrigins array
@@ -60,6 +62,12 @@ param consentVersion string
 
 @description('Server-controlled Blob prefix for this event, without leading or trailing slashes.')
 param blobPathPrefix string
+
+@description('Non-personal event identifier stored in Blob metadata. Use ASCII characters.')
+param eventId string = 'words-of-encouragement'
+
+@description('Comma-separated allowlist of message language codes, including optional legacy aliases.')
+param supportedLanguages string = 'en,es,fr,pt-BR,it,ja,zh-CN,ko,nl,de,pt,zh,ar,he'
 
 @description('AI review deployment name for operational inventory.')
 param aiReviewDeploymentName string = ''
@@ -138,7 +146,7 @@ resource cards 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-0
   properties: {
     publicAccess: 'None'
     metadata: {
-      purpose: 'rmh-words-of-encouragement-2026'
+      purpose: eventId
     }
   }
 }
@@ -191,7 +199,7 @@ resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
   }
   properties: {
     allowConfigFileUpdates: true
-    stagingEnvironmentPolicy: environment == 'prod' ? 'Enabled' : 'Disabled'
+    stagingEnvironmentPolicy: 'Enabled'
   }
 }
 
@@ -239,7 +247,6 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
       cors: {
         allowedOrigins: union(allowedOrigins, [
           'https://${staticWebApp.properties.defaultHostname}'
-          'https://*.2.azurestaticapps.net'
         ])
         supportCredentials: false
       }
@@ -257,11 +264,12 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     STORAGE_CONNECTION_STRING: storageConnectionString
     STORAGE_CONTAINER: containerName
     BLOB_PATH_PREFIX: blobPathPrefix
+    EVENT_ID: eventId
     ALLOWED_ORIGINS: join(union(allowedOrigins, ['https://${staticWebApp.properties.defaultHostname}']), ',')
     CONSENT_VERSION: consentVersion
     MAX_UPLOAD_BYTES: '5000000'
     IDEMPOTENCY_PENDING_SECONDS: '300'
-    SUPPORTED_LANGUAGES: 'en,es,fr,pt,ar,he'
+    SUPPORTED_LANGUAGES: supportedLanguages
     AI_REVIEW_ENABLED: string(aiReviewEnabled)
     AI_IMAGE_ENABLED: string(aiImageEnabled)
     AI_REVIEW_ENDPOINT: aiReviewEndpoint

@@ -2,7 +2,7 @@ import { app, type HttpRequest } from '@azure/functions'
 import { randomUUID } from 'node:crypto'
 import { callJsonModel, contentSafetyConcerns, moderateGeneratedImage } from '../ai.js'
 import { enforceRateLimit, json, publicMessage, requireSecureRequest } from '../http.js'
-import { messageConcerns } from '../validation.js'
+import { messageConcerns, validateLanguage } from '../validation.js'
 
 const constraints = `Landscape 16:9 eCard background; warm, supportive, family-friendly; large uncluttered message area.
 No people, faces, patients, hospitals, medical devices, treatments, logos, brands, text, letters, numbers,
@@ -16,8 +16,10 @@ app.http('generate-background', {
     const requestId = randomUUID()
     try {
       requireSecureRequest(request)
+      if (process.env.AI_IMAGE_ENABLED !== 'true') throw new Error('ai-unavailable')
       enforceRateLimit(request, 5)
       const body = (await request.json()) as Record<string, unknown>
+      validateLanguage(body.locale ?? 'en')
       const description = typeof body.description === 'string' ? body.description.trim() : ''
       if (description.length < 3 || description.length > 300) throw new Error('invalid-prompt')
       const concerns = [...messageConcerns(description), ...(await contentSafetyConcerns(description))]
