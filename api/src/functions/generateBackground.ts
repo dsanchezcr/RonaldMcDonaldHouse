@@ -1,6 +1,6 @@
 import { app, type HttpRequest } from '@azure/functions'
 import { randomUUID } from 'node:crypto'
-import { callJsonModel, contentSafetyConcerns, moderateGeneratedImage } from '../ai.js'
+import { callJsonModel, contentSafetyConcerns, moderateGeneratedImage, requireAiEnabled } from '../ai.js'
 import { enforceRateLimit, json, publicMessage, requireSecureRequest } from '../http.js'
 import { messageConcerns, validateLanguage } from '../validation.js'
 
@@ -16,7 +16,7 @@ app.http('generate-background', {
     const requestId = randomUUID()
     try {
       requireSecureRequest(request)
-      if (process.env.AI_IMAGE_ENABLED !== 'true') throw new Error('ai-unavailable')
+      requireAiEnabled('AI_IMAGE_ENABLED')
       enforceRateLimit(request, 5)
       const body = (await request.json()) as Record<string, unknown>
       validateLanguage(body.locale ?? 'en')

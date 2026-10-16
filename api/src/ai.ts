@@ -1,5 +1,9 @@
 type KeyAuthKind = 'azure-openai' | 'content-safety' | 'image-moderation'
 
+export function requireAiEnabled(setting: 'AI_REVIEW_ENABLED' | 'AI_IMAGE_ENABLED'): void {
+  if (process.env[setting]?.trim().toLowerCase() !== 'true') throw new Error('ai-unavailable')
+}
+
 function authHeaders(kind: KeyAuthKind): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (kind === 'content-safety') {

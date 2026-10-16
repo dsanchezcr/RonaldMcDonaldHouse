@@ -1,6 +1,6 @@
 import { app, type HttpRequest } from '@azure/functions'
 import { randomUUID } from 'node:crypto'
-import { callJsonModel, contentSafetyConcerns } from '../ai.js'
+import { callJsonModel, contentSafetyConcerns, requireAiEnabled } from '../ai.js'
 import { enforceRateLimit, json, publicMessage, requireSecureRequest } from '../http.js'
 import { messageConcerns, validateReviewInput } from '../validation.js'
 
@@ -19,7 +19,7 @@ app.http('review-message', {
     const requestId = randomUUID()
     try {
       requireSecureRequest(request)
-      if (process.env.AI_REVIEW_ENABLED !== 'true') throw new Error('ai-unavailable')
+      requireAiEnabled('AI_REVIEW_ENABLED')
       enforceRateLimit(request)
       if (!(request.headers.get('content-type') || '').toLowerCase().startsWith('application/json')) throw new Error('invalid-content-type')
       const input = validateReviewInput(await request.json())

@@ -23,6 +23,14 @@ Alert on availability, Function 5xx/429/latency, storage failures/throttling, AI
 
 ## Incident response
 
+If all AI routes return 503 while `/api/health` is healthy, check the **Function App**
+settings `AI_REVIEW_ENABLED` and `AI_IMAGE_ENABLED`, not only the GitHub/Vite
+flags. Use lowercase string `true` or `false` in configuration. The API accepts
+case-insensitive explicit `true` (including `True`) with surrounding whitespace;
+missing, false, or unrecognized values remain disabled. Older deployed versions
+require exact lowercase `true`. Normalize those live settings before retrying.
+Never remove moderation or the server-side gates to restore service.
+
 Disable AI independently with the server-side `AI_REVIEW_ENABLED=false` and `AI_IMAGE_ENABLED=false` settings. Frontend `VITE_` flags only control the UI and require a rebuild. For upload abuse or privacy risk, disable the Function/link or restrict ingress while preserving the static guidance/download experience. In-memory rate limits are per-instance and are not a substitute for managed ingress quotas and abuse protection. Do not inspect card content unless authorized by the approved incident process. Record only privacy-safe incident facts and notify security/privacy/event owners.
 
 For language upgrades, update `SUPPORTED_LANGUAGES` to include `en,es,fr,pt-BR,it,ja,zh-CN,ko,nl,de` (plus any retained aliases). Verify review, generation, and submission metadata for each enabled language. Use human review before distributing submitted cards: local regular-expression screening is primarily English and AI review remains optional.
