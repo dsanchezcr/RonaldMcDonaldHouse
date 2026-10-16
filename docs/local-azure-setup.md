@@ -19,7 +19,7 @@ Full functionality requires these Azure services and deployments:
 | App deployment | Static Web Apps token and Azure OIDC identity | No | GitHub Actions deploys the frontend and dedicated Function App separately |
 | Infrastructure deployment | Local Azure CLI account or reviewed deployment identity | No | Bicep deployment only when resources must be created or updated |
 
-The app can run without AI image generation by setting `VITE_AI_IMAGE_ENABLED=false`. When image generation is enabled, `/api/moderate-image` must also be configured with `IMAGE_MODERATION_KEY` and Content Safety settings.
+The app can run without AI image generation. `VITE_AI_IMAGE_ENABLED` controls the UI; the server independently enforces `AI_IMAGE_ENABLED`. Both must be `true` to enable generation. `/api/moderate-image` must also be configured with `IMAGE_MODERATION_KEY` and Content Safety settings. The equivalent review flags are `VITE_AI_REVIEW_ENABLED` and `AI_REVIEW_ENABLED`.
 
 ## What gets deployed
 
@@ -49,7 +49,7 @@ The template does **not** create model deployments or Azure AI Content Safety. C
 Install:
 
 - Git
-- Node.js 22 LTS
+- Node.js 22.22.2+ (22 LTS) or 24.15.0+ (24 LTS)
 - Azure CLI
 - Azure Functions Core Tools v4
 - Azurite, only if you need offline storage testing
@@ -266,6 +266,8 @@ For Azure-backed local testing, point `AzureWebJobsStorage` and `STORAGE_CONNECT
 
 ```json
 {
+  "AI_REVIEW_ENABLED": "true",
+  "AI_IMAGE_ENABLED": "false",
   "AI_REVIEW_ENDPOINT": "<full chat-completions URL>",
   "AI_IMAGE_ENDPOINT": "<full image-generations URL>",
   "AI_API_KEY": "<azure-openai-key>",
@@ -292,6 +294,8 @@ Restart Functions after changing settings, then restart Vite after changing `.en
 If the resource group, Static Web App, Storage account, Application Insights, and app settings already exist, skip this section and use the app-only workflow in [Build and deploy code](#8-build-and-deploy-code).
 
 Copy `infra/example.parameters.json` to an ignored environment-specific file such as `infra/dev.parameters.json`. Replace every placeholder. Use an approved integer retention period and initially use an empty `allowedOrigins` array while obtaining the generated Static Web App hostname.
+
+`githubRepository` is required: supply your exact `owner/repository`, without a URL, wildcard, or branch suffix. Protect its `production` environment with deployment-branch restrictions and required reviewers. There is no default trust relationship with the source repository. Set `eventId` and `blobPathPrefix` to non-personal values for your deployment. The `supportedLanguages` default includes all ten UI languages; update existing deployment settings when upgrading.
 
 The API is deployed as a dedicated Linux Flex Consumption Function App. This is the current serverless Consumption option; it replaces the managed Static Web Apps API and does not require an App Service plan tier such as `B1` or `Y1`.
 
@@ -411,7 +415,7 @@ npx --yes @azure/static-web-apps-cli deploy ./dist `
 Remove-Variable deploymentToken
 ```
 
-For repeat app deployments, use the GitHub Actions workflow. It does not redeploy the resource group; it builds/tests, then deploys production on `main` and preview environments for pull requests.
+For repeat app deployments, use the GitHub Actions workflow. It does not redeploy the resource group; it builds/tests, then deploys production on `main`. Previews require `ENABLE_PR_PREVIEWS=true` and a same-repository pull request. Fork pull requests validate without deployment secrets. Add each approved preview origin explicitly to API CORS settings; wildcard Static Web Apps origins are not enabled.
 
 For GitHub Actions deployments, configure these environment secrets when the corresponding feature is enabled:
 
@@ -427,6 +431,12 @@ Configure these environment variables:
 | `AZURE_FUNCTIONAPP_NAME` | Dedicated Function App resource name |
 | `VITE_API_BASE_URL` | Dedicated Function App HTTPS origin, without `/api` suffix |
 | `AI_REVIEW_ENABLED`, `AI_IMAGE_ENABLED`, `CONSENT_VERSION`, `APPROVED_FOOTER_TEXT` | Vite build-time app configuration |
+| `VITE_EVENT_TITLE`, `VITE_EVENT_DATE`, `VITE_EVENT_TIME`, `VITE_EVENT_DURATION`, `VITE_ACTIVITY_NAME` | Optional organizer-provided display text; leave blank for translated defaults |
+| `VITE_VOLUNTEER_TRACKING_URL` | Optional public volunteer-tracking URL; blank hides the tracking section |
+| `VITE_MAX_MESSAGE_LENGTH` | Optional message limit; keep aligned with API `MAX_MESSAGE_LENGTH` |
+| `ENABLE_PR_PREVIEWS` | Opt in to same-repository PR previews with `true` |
+
+The build writes the configured HTTPS API origin into the generated `dist/staticwebapp.config.json` CSP. Do not manually hard-code a deployment hostname in the source policy. Custom event/footer strings are displayed as provided rather than translated.
 
 If you deploy locally, pass secure parameters in an ignored parameters file or with command-line parameters. Do not commit real keys.
 

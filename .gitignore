@@ -10,6 +10,12 @@
 *.userosscache
 *.sln.docstates
 *.env
+.env.*
+!.env.example
+.azurite/
+.tsupgrader/
+*.pem
+*.key
 infra/*.parameters.json
 !infra/example.parameters.json
 

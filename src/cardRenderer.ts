@@ -18,29 +18,52 @@ function loadImage(source: string): Promise<HTMLImageElement> {
   })
 }
 
-export function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+export function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: number, language = 'en'): string[] {
   const lines: string[] = []
+  const words = new Intl.Segmenter(language, { granularity: 'word' })
+  const graphemes = new Intl.Segmenter(language, { granularity: 'grapheme' })
   for (const paragraph of text.split(/\r?\n/u)) {
-    const words = paragraph.split(/\s+/u)
     let line = ''
-    for (const word of words) {
-      const candidate = line ? `${line} ${word}` : word
-      if (line && context.measureText(candidate).width > maxWidth) {
-        lines.push(line)
-        line = word
-      } else {
-        line = candidate
+    for (const { segment } of words.segment(paragraph.trim())) {
+      if (/^\s+$/u.test(segment)) {
+        if (line) line += ' '
+        continue
+      }
+      if (line && context.measureText(line + segment).width > maxWidth) {
+        lines.push(line.trimEnd())
+        line = ''
+      }
+      for (const { segment: grapheme } of graphemes.segment(segment)) {
+        if (context.measureText(grapheme).width > maxWidth) throw new Error('A character is too wide for the card.')
+        if (line && context.measureText(line + grapheme).width > maxWidth) {
+          lines.push(line)
+          line = ''
+        }
+        line += grapheme
       }
     }
-    lines.push(line)
+    lines.push(line.trimEnd())
   }
   return lines
+}
+
+export function layoutCardText(context: CanvasRenderingContext2D, state: CardState) {
+  const fontFamily = '"Segoe UI", "Yu Gothic", "Microsoft YaHei", "Malgun Gothic", Arial, sans-serif'
+  for (let fontSize = Math.min(68, Math.max(38, state.fontSize)); fontSize >= 20; fontSize -= 1) {
+    context.font = `${fontSize}px ${fontFamily}`
+    const lines = wrapText(context, state.message, 920, state.language)
+    if (state.firstName) lines.push('', ...wrapText(context, `— ${state.firstName}`, 920, state.language))
+    const lineHeight = fontSize * 1.35
+    if (lines.length * lineHeight <= 500) return { lines, lineHeight, fontSize }
+  }
+  throw new Error('The message does not fit on the card. Shorten it or remove some line breaks.')
 }
 
 export async function renderCard(state: CardState): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas')
   canvas.width = WIDTH
   canvas.height = HEIGHT
+  canvas.lang = state.language
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Canvas rendering is not supported by this browser.')
 
@@ -49,19 +72,16 @@ export async function renderCard(state: CardState): Promise<HTMLCanvasElement> {
   context.fillStyle = state.design.panelColor
   context.fillRect(260, 150, 1080, 600)
 
-  const fontSize = Math.min(68, Math.max(38, state.fontSize))
-  context.font = `${fontSize}px "Segoe UI", Arial, sans-serif`
   context.fillStyle = state.design.textColor
   context.textAlign = state.textAlign
   context.textBaseline = 'middle'
   context.direction = isRtlLanguage(state.language) ? 'rtl' : 'ltr'
 
-  const lines = wrapText(context, state.message, 920)
-  if (state.firstName) lines.push('', `— ${state.firstName}`)
-  const lineHeight = fontSize * 1.35
+  await document.fonts?.ready
+  const { lines, lineHeight } = layoutCardText(context, state)
   const x = state.textAlign === 'left' ? 340 : state.textAlign === 'right' ? 1260 : 800
   const firstY = 450 - ((lines.length - 1) * lineHeight) / 2
-  lines.forEach((line, index) => context.fillText(line, x, firstY + index * lineHeight, 920))
+  lines.forEach((line, index) => context.fillText(line, x, firstY + index * lineHeight))
   return canvas
 }
 

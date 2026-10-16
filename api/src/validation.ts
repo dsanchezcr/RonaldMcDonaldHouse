@@ -1,4 +1,12 @@
-const supportedLanguages = new Set((process.env.SUPPORTED_LANGUAGES || 'en,es,fr,pt,ar,he').split(','))
+const supportedLanguages = new Set(
+  (process.env.SUPPORTED_LANGUAGES || 'en,es,fr,pt-BR,it,ja,zh-CN,ko,nl,de,pt,zh,ar,he')
+    .split(',').map((language) => language.trim()).filter(Boolean),
+)
+
+export function validateLanguage(value: unknown): string {
+  if (typeof value !== 'string' || !supportedLanguages.has(value)) throw new Error('invalid-language')
+  return value
+}
 const concernPatterns: Array<[string, RegExp]> = [
   ['contact-information', /\b(?:https?:\/\/|www\.|[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:\+?\d[\s().-]*){7,}|@[a-z0-9_]{2,})/iu],
   ['medical-content', /\b(?:diagnos(?:is|ed)|medication|dosage|treatment recommendation|you should take)\b/iu],
@@ -19,7 +27,7 @@ export function validateReviewInput(input: unknown): { message: string; language
   const language = typeof value.language === 'string' ? value.language : ''
   const action = typeof value.action === 'string' ? value.action : 'review'
   if (message.length < 10 || message.length > Number(process.env.MAX_MESSAGE_LENGTH || 350)) throw new Error('invalid-message')
-  if (!supportedLanguages.has(language)) throw new Error('invalid-language')
+  validateLanguage(language)
   if (!['review', 'shorten', 'clarify', 'improve-warmth'].includes(action)) throw new Error('invalid-action')
   return { message, language, action }
 }
@@ -29,9 +37,9 @@ export function validateSubmissionMetadata(
   designSource: unknown,
   consentVersion: unknown,
 ): { languageCode: string; designSource: 'approved-catalog' | 'ai-generated'; consentVersion: string } {
-  if (typeof languageCode !== 'string' || !supportedLanguages.has(languageCode)) throw new Error('invalid-language')
+  const language = validateLanguage(languageCode)
   if (designSource !== 'approved-catalog' && designSource !== 'ai-generated') throw new Error('invalid-design-source')
   const expectedConsent = process.env.CONSENT_VERSION || '2026-01'
   if (consentVersion !== expectedConsent) throw new Error('invalid-consent')
-  return { languageCode, designSource, consentVersion: expectedConsent }
+  return { languageCode: language, designSource, consentVersion: expectedConsent }
 }

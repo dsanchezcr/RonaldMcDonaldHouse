@@ -19,6 +19,8 @@ a { color: var(--red-dark); }
 .skip-link:focus { top: .5rem; }
 .site-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem max(1rem, calc((100% - 1180px) / 2)); background: white; border-bottom: 1px solid var(--border); font-weight: 700; }
 .brand-logo { display: block; width: 80px; height: auto; flex: 0 0 auto; }
+.language-picker { flex: 0 0 auto; max-width: 100%; }
+.language-picker label { margin-top: 0; }
 .brand-placeholder { display: grid; place-items: center; width: 150px; min-height: 56px; border: 2px dashed var(--red); border-radius: .5rem; padding: .35rem; color: var(--red-dark); font-size: .8rem; text-align: center; }
 .floating-alert { position: fixed; right: 1rem; bottom: 1rem; z-index: 20; width: min(420px, calc(100% - 2rem)); padding: 1rem 1.2rem; border: 2px solid #8b111c; border-left-width: 8px; border-radius: .75rem; color: #8b111c; background: white; box-shadow: 0 10px 30px #3b302c33; font-weight: 800; }
 main { overflow: hidden; }

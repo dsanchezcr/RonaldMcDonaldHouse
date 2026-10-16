@@ -1,8 +1,12 @@
 {
   "name": "words-of-encouragement",
   "private": true,
+  "license": "MIT",
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -19,6 +23,7 @@
     "react-dom": "^19.2.8"
   },
   "overrides": {
+    "source-map-js": "1.2.2",
     "jsdom": {
       "whatwg-url": "17.1.1",
       "undici": "8.10.2"

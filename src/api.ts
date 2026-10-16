@@ -1,4 +1,23 @@
 import type { CardState, GeneratedBackgroundResponse, ReviewResponse, SubmissionResponse } from './types'
+import type { MessageKey } from './locales'
+
+export class ServiceError extends Error {
+  readonly status: number
+
+  constructor(status: number) {
+    super(`Service request failed (${status}).`)
+    this.status = status
+  }
+}
+
+export function serviceErrorKey(error: unknown, fallback: MessageKey): MessageKey {
+  if (error instanceof ServiceError) {
+    if (error.status === 429) return 'rateError'
+    if (error.status === 409) return 'pendingError'
+    if (error.status === 400 || error.status === 413) return 'requestError'
+  }
+  return fallback
+}
 
 export function resolveApiUrl(path: string, baseUrl = import.meta.env.VITE_API_BASE_URL || ''): string {
   return `${baseUrl.replace(/\/+$/u, '')}${path}`
@@ -6,8 +25,7 @@ export function resolveApiUrl(path: string, baseUrl = import.meta.env.VITE_API_B
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { message?: string }
-    throw new Error(body.message || 'The service is temporarily unavailable. Please try again.')
+    throw new ServiceError(response.status)
   }
   return response.json() as Promise<T>
 }

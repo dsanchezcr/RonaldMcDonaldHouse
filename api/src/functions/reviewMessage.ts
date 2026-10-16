@@ -19,6 +19,7 @@ app.http('review-message', {
     const requestId = randomUUID()
     try {
       requireSecureRequest(request)
+      if (process.env.AI_REVIEW_ENABLED !== 'true') throw new Error('ai-unavailable')
       enforceRateLimit(request)
       if (!(request.headers.get('content-type') || '').toLowerCase().startsWith('application/json')) throw new Error('invalid-content-type')
       const input = validateReviewInput(await request.json())

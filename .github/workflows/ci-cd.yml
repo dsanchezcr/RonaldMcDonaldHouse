@@ -9,8 +9,15 @@ on:
 
 permissions:
   contents: read
-  id-token: write
-  pull-requests: write
+
+env:
+  VITE_EVENT_TITLE: ${{ vars.VITE_EVENT_TITLE }}
+  VITE_EVENT_DATE: ${{ vars.VITE_EVENT_DATE }}
+  VITE_EVENT_TIME: ${{ vars.VITE_EVENT_TIME }}
+  VITE_EVENT_DURATION: ${{ vars.VITE_EVENT_DURATION }}
+  VITE_ACTIVITY_NAME: ${{ vars.VITE_ACTIVITY_NAME }}
+  VITE_VOLUNTEER_TRACKING_URL: ${{ vars.VITE_VOLUNTEER_TRACKING_URL }}
+  VITE_MAX_MESSAGE_LENGTH: ${{ vars.VITE_MAX_MESSAGE_LENGTH }}
 
 jobs:
   validate:
@@ -34,6 +41,9 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4.2.2
       - uses: azure/login@v3
@@ -58,6 +68,18 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Build configured frontend
+        env:
+          VITE_AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
+          VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
+          VITE_CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
+          VITE_APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: npm ci && npm run build
       - id: deploy
         uses: Azure/static-web-apps-deploy@v1
         env:
@@ -69,9 +91,9 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           action: upload
-          app_location: .
-          output_location: dist
-          app_build_command: npm run build
+          app_location: dist
+          output_location: ""
+          skip_app_build: true
       - name: Publish production URL
         run: |
           {
@@ -83,11 +105,26 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-preview:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository && vars.ENABLE_PR_PREVIEWS == 'true'
     needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Build configured frontend
+        env:
+          VITE_AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
+          VITE_AI_IMAGE_ENABLED: ${{ vars.AI_IMAGE_ENABLED }}
+          VITE_CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
+          VITE_APPROVED_FOOTER_TEXT: ${{ vars.APPROVED_FOOTER_TEXT }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: npm ci && npm run build
       - id: deploy
         uses: Azure/static-web-apps-deploy@v1
         env:
@@ -100,9 +137,9 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.STATIC_WEB_APP_DEPLOYMENT_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: .
-          output_location: dist
-          app_build_command: npm run build
+          app_location: dist
+          output_location: ""
+          skip_app_build: true
       - name: Publish preview URL
         run: |
           {
@@ -115,7 +152,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   close-preview:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository && vars.ENABLE_PR_PREVIEWS == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: Azure/static-web-apps-deploy@v1

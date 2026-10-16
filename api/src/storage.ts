@@ -69,11 +69,11 @@ export async function storeSubmission(
   const submittedUtc = new Date().toISOString()
   const result: StoredSubmission = { success: true, submissionId, submittedUtc }
   try {
-    const pathPrefix = (process.env.BLOB_PATH_PREFIX || '2026/10/16/cards').replace(/^\/|\/$/gu, '')
+    const pathPrefix = (process.env.BLOB_PATH_PREFIX || 'cards').replace(/^\/|\/$/gu, '')
     await container.getBlockBlobClient(`${pathPrefix}/${submissionId}.jpg`).uploadData(image, {
       blobHTTPHeaders: { blobContentType: 'image/jpeg', blobCacheControl: 'private, no-store' },
       metadata: {
-        event: 'rmh-words-of-encouragement-2026',
+        event: process.env.EVENT_ID || 'words-of-encouragement',
         submissionversion: '1',
         languagecode: metadata.languageCode,
         designsource: metadata.designSource,
