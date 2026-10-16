@@ -37,7 +37,15 @@ Application Insights ─ privacy-safe operational telemetry; no request bodies
 - **Storage:** private Blob container; server-generated paths; JPEG decode/re-encode strips metadata; distributed Blob idempotency markers.
 - **AI:** optional Azure OpenAI endpoints authenticated with server-side keys; fixed prompts; Azure AI Content Safety text/image hooks; in-repo image moderation endpoint for generated backgrounds.
 - **Infrastructure:** Bicep for Static Web Apps, Linux Flex Consumption Function App, Storage, Log Analytics, Application Insights, app settings, configurable retention, HTTPS/TLS settings, and restricted CORS.
-- **Delivery:** GitHub Actions validates every push/PR, deploys the Function App through Azure OIDC after `main` succeeds, then deploys the static frontend. Previews are opt-in (`ENABLE_PR_PREVIEWS=true`) for same-repository pull requests only; fork PRs receive validation without deployment secrets.
+- **Delivery:** GitHub Actions validates every push/PR, deploys the Function App through Azure OIDC after `main` succeeds, then deploys the static frontend. Every same-repository PR automatically receives its own Static Web Apps frontend preview after validation succeeds. Updates reuse that PR's URL; closing or merging the PR removes the Azure preview. Fork PRs receive validation without deployment secrets.
+
+### Pull-request previews
+
+The `deploy-preview` check verifies that the deployed page responds successfully. Its URL appears in the PR deployment comment, the workflow summary, and the `preview-pr-<number>` GitHub environment. Deploy and cleanup jobs share a per-PR concurrency group; a newer update or closure cancels an older in-progress job without affecting other PRs.
+
+The preview uses the existing `VITE_API_BASE_URL`: **only the frontend is isolated**. API changes are tested in CI but are not deployed from PR branches, and preview submissions go to the shared backend/storage. Use non-sensitive test content. Configure each preview's exact origin in the shared Function App's CORS allowlist before testing API flows. Pre-production environments are enabled for all Bicep environments; the hosting plan's concurrent preview quota still applies.
+
+No `ENABLE_PR_PREVIEWS` variable is required by the current workflow. Older workflow revisions with that gate need the variable set to `true` when rerun.
 
 ## UX and component hierarchy
 

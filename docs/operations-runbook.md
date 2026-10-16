@@ -6,8 +6,16 @@
 2. Configure variables and secrets documented in `.env.example`, `api/local.settings.example.json`, and `infra/main.bicep`. Never store values in source.
 3. Provision or update Azure resources through reviewed Bicep only when infrastructure changes are required.
 4. Provision Function App infrastructure through a reviewed Bicep deployment before the first code deployment; do not place Azure service keys in GitHub workflow files.
-5. For app-only changes, let GitHub Actions build/test first, deploy the dedicated Function App from `main` through OIDC, then deploy the static frontend. Previews are opt-in for same-repository pull requests and require explicit approved CORS origins.
+5. For app-only changes, let GitHub Actions build/test first, deploy the dedicated Function App from `main` through OIDC, then deploy the static frontend. Every same-repository pull request gets its own frontend preview automatically after validation. Fork PRs run validation only. Preview API calls use the shared backend and require the exact preview origin in platform CORS and `ALLOWED_ORIGINS`.
 6. Verify the Function App `/api/health` endpoint, restrictive headers/CORS, private container access, server-side key upload, lifecycle policy, telemetry redaction, AI review/generation behavior, moderation failures, and the exact Giving Portal URL.
+
+## Pull-request preview checks
+
+1. Confirm `validate` passed. `deploy-preview` should run for opened, synchronized, or reopened same-repository PRs; it intentionally skips fork PRs and PR closure events.
+2. Open the preview URL from the PR deployment comment, workflow summary, or `preview-pr-<number>` environment. The deployment job must fail if no URL is returned or the page cannot be reached.
+3. If an older workflow revision skips the preview because of `ENABLE_PR_PREVIEWS`, set that repository variable to `true` before rerunning it. The current workflow has no opt-in gate.
+4. If Azure refuses to create a preview, check that pre-production environments are enabled and the hosting plan has capacity. Closing a PR runs `close-preview` independently of validation to remove its Azure environment.
+5. Verify API preflight requests from the exact preview origin. Frontend deployment success does not prove that CORS is configured or that PR API changes are deployed. Never use real family or volunteer information in preview testing.
 
 ## Monitoring
 

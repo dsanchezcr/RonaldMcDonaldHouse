@@ -199,7 +199,7 @@ resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
   }
   properties: {
     allowConfigFileUpdates: true
-    stagingEnvironmentPolicy: environment == 'prod' ? 'Enabled' : 'Disabled'
+    stagingEnvironmentPolicy: 'Enabled'
   }
 }
 

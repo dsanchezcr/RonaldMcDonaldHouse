@@ -359,7 +359,7 @@ $functionAppUrl = az deployment group show `
   --query properties.outputs.functionAppUrl.value --output tsv
 ```
 
-Set the GitHub variable `VITE_API_BASE_URL` to `$functionAppUrl`. Set `allowedOrigins` to the production Static Web App hostname; the template also permits Static Web Apps preview hostnames without credentials.
+Set the GitHub variable `VITE_API_BASE_URL` to `$functionAppUrl`. Set `allowedOrigins` to the production Static Web App hostname and the exact preview origins you intend to test. The template does not allow wildcard preview hostnames.
 
 ## 8. Build and deploy code
 
@@ -415,7 +415,11 @@ npx --yes @azure/static-web-apps-cli deploy ./dist `
 Remove-Variable deploymentToken
 ```
 
-For repeat app deployments, use the GitHub Actions workflow. It does not redeploy the resource group; it builds/tests, then deploys production on `main`. Previews require `ENABLE_PR_PREVIEWS=true` and a same-repository pull request. Fork pull requests validate without deployment secrets. Add each approved preview origin explicitly to API CORS settings; wildcard Static Web Apps origins are not enabled.
+For repeat app deployments, use the GitHub Actions workflow. It does not redeploy the resource group; it builds/tests, then deploys production on `main`. Every same-repository pull request automatically gets a unique frontend preview after validation passes. New commits update the same URL; closing or merging the PR removes the Azure preview. Fork pull requests validate without deployment secrets.
+
+The preview URL appears in the PR deployment comment, workflow summary, and `preview-pr-<number>` GitHub environment. A failed deployment or unreachable preview fails the check instead of silently succeeding. Previews are enabled in every Bicep environment; existing Static Web Apps created with staging disabled must enable pre-production environments. Hosting-plan preview quotas still apply.
+
+Previews use the shared deployed API and storage, not PR-specific API code. Add each approved preview origin explicitly to the Function App's platform CORS settings and `ALLOWED_ORIGINS` app setting before testing API calls; wildcard Static Web Apps origins are not enabled. Use non-sensitive test data.
 
 For GitHub Actions deployments, configure these environment secrets when the corresponding feature is enabled:
 
@@ -434,7 +438,8 @@ Configure these environment variables:
 | `VITE_EVENT_TITLE`, `VITE_EVENT_DATE`, `VITE_EVENT_TIME`, `VITE_EVENT_DURATION`, `VITE_ACTIVITY_NAME` | Optional organizer-provided display text; leave blank for translated defaults |
 | `VITE_VOLUNTEER_TRACKING_URL` | Optional public volunteer-tracking URL; blank hides the tracking section |
 | `VITE_MAX_MESSAGE_LENGTH` | Optional message limit; keep aligned with API `MAX_MESSAGE_LENGTH` |
-| `ENABLE_PR_PREVIEWS` | Opt in to same-repository PR previews with `true` |
+
+`ENABLE_PR_PREVIEWS` is no longer required. Set it to `true` only if you need to rerun an older workflow revision that still contains the opt-in gate.
 
 The build writes the configured HTTPS API origin into the generated `dist/staticwebapp.config.json` CSP. Do not manually hard-code a deployment hostname in the source policy. Custom event/footer strings are displayed as provided rather than translated.
 
